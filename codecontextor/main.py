@@ -47,6 +47,7 @@ def parse_patterns_file(patterns_file_path):
         return []
 
     with open(patterns_file_path, 'r') as f:
+        # Don't modify patterns - keep them exactly as they appear in .gitignore
         patterns = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
     return patterns
 
@@ -56,7 +57,11 @@ def should_exclude(path, base_path, spec):
         return False
     try:
         rel_path = path.relative_to(base_path)
+        # Convert to forward slashes for consistency
         rel_path_str = str(rel_path).replace(os.sep, '/')
+        # Add trailing slash for directories to match .gitignore semantics
+        if path.is_dir():
+            rel_path_str += '/'
         return spec.match_file(rel_path_str)
     except ValueError:
         return False
