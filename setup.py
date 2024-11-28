@@ -22,7 +22,7 @@ except Exception as e:
 
 setup(
     name="codecontextor",
-    version="1.0.0",
+    version="1.0.2",
     author="Salih Ergüt",
     author_email="salih.ergut@gmail.com",
     description="A tool for extracting codebase context for LLM conversations",
