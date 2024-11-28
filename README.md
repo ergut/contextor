@@ -24,6 +24,14 @@ The tool is intentionally kept simple and focused on this single task to make it
 
 ## Installation
 
+You can install CodeContextor directly from PyPI:
+
+```bash
+pip install codecontextor
+```
+
+Alternatively, you can install from source:
+
 ```bash
 # Clone the repository
 git clone https://github.com/ergut/codecontextor
@@ -39,13 +47,13 @@ Basic usage:
 ```bash
 # Generate tree structure and include ALL files in directory
 # (Will show size warning and ask for confirmation)
-python codecontextor.py --directory ./my_project
+codecontextor --directory ./my_project
 
 # Include specific files only
-python codecontextor.py --files main.py config.yaml --directory ./my_project
+codecontextor --files main.py config.yaml --directory ./my_project
 
 # Include files listed in a text file
-python codecontextor.py --files-list important_files.txt --directory ./my_project
+codecontextor --files-list important_files.txt --directory ./my_project
 ```
 
 ### Command Line Arguments
@@ -119,8 +127,8 @@ When no specific files are provided, CodeContextor will:
 ## Using with LLMs
 
 1. Generate the context file for your project:
-   - Use specific files: `python codecontextor.py --files main.py config.py`
-   - Include all files: `python codecontextor.py` (will ask for confirmation)
+   - Use specific files: `codecontextor --files main.py config.py`
+   - Include all files: `codecontextor` (will ask for confirmation)
 2. Start a conversation with an LLM
 3. Share the generated file at the beginning of the conversation
 4. The LLM can now:
@@ -160,6 +168,7 @@ Salih Ergüt
   - Added automatic all-files inclusion feature
   - Added size warnings and confirmation
   - Added large file protection (>10MB files are skipped)
+  - Added PyPI package installation
 
 - 1.0.0 (2024-11-28)
   - Initial release
