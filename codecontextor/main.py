@@ -10,13 +10,15 @@ Features:
 - Generate tree structure of directories
 - Support for .gitignore patterns and additional exclude patterns
 - Custom prefix text support
-- Multiple input methods (direct file list or file containing paths
+- Multiple input methods (direct file list or file containing paths)
+- Automatic inclusion of all files when no specific files are provided
 
 Usage:
     python script.py --files file1.txt file2.txt --output merged.txt
     python script.py --files-list files.txt --prefix "My Project Files"
     python script.py --prefix-file prefix.txt --directory ./project --no-gitignore
     python script.py --exclude-file exclude.txt
+    python script.py --directory ./project  # Will include all files
 
 Author: Salih Ergüt
 """
@@ -47,7 +49,6 @@ def parse_patterns_file(patterns_file_path):
         return []
 
     with open(patterns_file_path, 'r') as f:
-        # Don't modify patterns - keep them exactly as they appear in .gitignore
         patterns = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
     return patterns
 
@@ -57,9 +58,7 @@ def should_exclude(path, base_path, spec):
         return False
     try:
         rel_path = path.relative_to(base_path)
-        # Convert to forward slashes for consistency
         rel_path_str = str(rel_path).replace(os.sep, '/')
-        # Add trailing slash for directories to match .gitignore semantics
         if path.is_dir():
             rel_path_str += '/'
         return spec.match_file(rel_path_str)
@@ -79,11 +78,9 @@ def generate_tree(path, spec=None, prefix=''):
 
     entries = []
 
-    # Add the root directory
     if not prefix:
         entries.append(str(path))
 
-    # Get all valid entries
     items = []
     try:
         for item in path.iterdir():
@@ -92,10 +89,8 @@ def generate_tree(path, spec=None, prefix=''):
     except PermissionError:
         return entries
 
-    # Sort items (directories first, then files)
     items.sort(key=lambda x: (not x.is_dir(), x.name.lower()))
 
-    # Process all items
     for index, item in enumerate(items):
         is_last = index == len(items) - 1
 
@@ -110,6 +105,33 @@ def generate_tree(path, spec=None, prefix=''):
             entries.extend(generate_tree(item, spec, new_prefix))
 
     return entries
+
+def get_all_files(directory, spec):
+    """Get list of all files in directory that aren't excluded by spec"""
+    files = []
+    for root, _, filenames in os.walk(directory):
+        for filename in filenames:
+            file_path = Path(os.path.join(root, filename))
+            if not should_exclude(file_path, directory, spec):
+                files.append(str(file_path))
+    return sorted(files)
+
+def calculate_total_size(file_paths):
+    """Calculate total size of files in bytes"""
+    total_size = 0
+    for file_path in file_paths:
+        try:
+            total_size += os.path.getsize(file_path)
+        except (OSError, IOError):
+            continue
+    return total_size
+
+def ask_user_confirmation(total_size_mb):
+    """Ask user for confirmation if total size is large"""
+    print(f"\nWarning: You're about to include all files in the directory.")
+    print(f"Total size of files to be included: {total_size_mb:.2f} MB")
+    response = input("Do you want to continue? [y/N]: ").lower()
+    return response in ['y', 'yes']
 
 def add_file_header(file_path):
     """Add descriptive header before file content"""
@@ -139,22 +161,32 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None, use_g
 
         spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
 
-        with open(output_file, 'w', encoding='utf-8') as outfile:
-            # Write the conversation-friendly header
-            write_conversation_header(outfile, directory)
+        # If no files specified (None), get all files in directory
+        if file_paths is None:  # Explicitly check for None
+            print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
+            all_files = get_all_files(directory, spec)
+            total_size = calculate_total_size(all_files)
+            total_size_mb = total_size / (1024 * 1024)  # Convert to MB
+            
+            # Always show size and ask for confirmation
+            if not ask_user_confirmation(total_size_mb):
+                print("Operation cancelled by user.")
+                return
+            
+            file_paths = all_files
+            print(f"Including all {len(file_paths)} files from directory...")
 
-            # Write the full tree structure
+        with open(output_file, 'w', encoding='utf-8') as outfile:
+            write_conversation_header(outfile, directory)
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             outfile.write(f"\n{tree_output}\n\n")
             
-            # Separator between tree and included files
             outfile.write("""
 ## Included File Contents
 The following files are included in full:
 
 """)
 
-            # Write included file contents
             for file_path in file_paths:
                 if file_path.strip().startswith('#'):
                     continue
@@ -163,9 +195,12 @@ The following files are included in full:
                     print(f"Warning: File not found - {file_path}")
                     continue
 
-                outfile.write(add_file_header(file_path))
-                
                 try:
+                    if os.path.getsize(file_path) > 10 * 1024 * 1024:  # Skip files larger than 10MB
+                        print(f"Warning: Skipping large file ({file_path}) - size exceeds 10MB")
+                        continue
+
+                    outfile.write(add_file_header(file_path))
                     with open(file_path, 'r', encoding='utf-8') as infile:
                         outfile.write(infile.read())
                     outfile.write('\n\n')
@@ -197,14 +232,13 @@ def main():
 
     args = parser.parse_args()
 
-    files_to_merge = []
+    # Explicitly handle the case when no files are specified
+    files_to_merge = None  # Change to None as default
     if args.files_list:
         files_to_merge = read_files_from_txt(args.files_list)
     elif args.files:
         files_to_merge = args.files
-
-    if not files_to_merge:
-        print("No files specified to include. Will only generate directory tree.")
+    # Note: if neither are specified, files_to_merge remains None
 
     merge_files(files_to_merge, args.output, args.directory, not args.no_gitignore, args.exclude_file)
 

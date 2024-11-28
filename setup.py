@@ -1,16 +1,30 @@
 from setuptools import setup, find_packages
+import os
 
-with open("README.md", "r", encoding="utf-8") as fh:
+# Get absolute path to requirements.txt
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+req_path = os.path.join(BASE_DIR, "requirements.txt")
+
+# Read README content
+with open(os.path.join(BASE_DIR, "README.md"), "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+# Read requirements
+requirements = ["pathspec>=0.12.1"]  # Default requirements
+try:
+    if os.path.exists(req_path):
+        with open(req_path, "r", encoding="utf-8") as fh:
+            file_requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+            if file_requirements:  # Only use file requirements if they exist
+                requirements = file_requirements
+except Exception as e:
+    print(f"Warning: Could not read requirements file: {e}")
 
 setup(
     name="codecontextor",
     version="1.0.0",
     author="Salih Ergüt",
-    author_email="salih.ergut@oredata.com",
+    author_email="salih.ergut@gmail.com",
     description="A tool for extracting codebase context for LLM conversations",
     long_description=long_description,
     long_description_content_type="text/markdown",
