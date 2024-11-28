@@ -132,6 +132,15 @@ When no specific files are provided, CodeContextor will:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Testing
+
+CodeContextor includes a comprehensive test suite covering all major functionality. For detailed information about running tests, test coverage, and contributing new tests, please see [README.test.md](README.test.md).
+
+Basic test execution:
+```bash
+python -m unittest tests/test_main.py -v
+```
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
