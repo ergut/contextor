@@ -1,5 +1,5 @@
 """
-File Merger with Tree Structure
+File Merger with Tree Structure and Token Estimation
 
 A Python script that merges multiple files into a single output file while including
 a tree-like directory structure at the beginning. The script supports .gitignore patterns
@@ -28,12 +28,25 @@ import argparse
 from pathlib import Path
 import pathspec
 from datetime import datetime
+import re
 
-def write_conversation_header(outfile, project_path):
+def estimate_tokens(text):
+    """Estimate the number of tokens in text using word-based approximation"""
+    # Split on whitespace and punctuation
+    words = re.findall(r'\w+|[^\w\s]', text)
+    # Use 0.75 as a conservative ratio (most GPT models average 0.75 tokens per word)
+    return int(len(words) / 0.75)
+
+def write_conversation_header(outfile, project_path, total_tokens=None):
     """Write a header explaining how to use this file in conversations"""
-    outfile.write(f"""# Project Context File
+    header = f"""# Project Context File
 Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Project Path: {project_path}
+Project Path: {project_path}"""
+
+    if total_tokens is not None:
+        header += f"\nEstimated Tokens: {total_tokens:,}"
+
+    header += """
 
 ## How to Use This File
 1. The tree structure below shows ALL available files in the project
@@ -41,7 +54,8 @@ Project Path: {project_path}
 3. During conversation, you can request the contents of any file shown in the tree
 
 ## Available Files
-""")
+"""
+    outfile.write(header)
 
 def parse_patterns_file(patterns_file_path):
     """Parse a patterns file and return a list of patterns"""
@@ -144,7 +158,8 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 """
 
-def merge_files(file_paths, output_file='merged_file.txt', directory=None, use_gitignore=True, exclude_file=None):
+def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
+                use_gitignore=True, exclude_file=None, estimate_tokens_flag=False):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -161,14 +176,12 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None, use_g
 
         spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
 
-        # If no files specified (None), get all files in directory
-        if file_paths is None:  # Explicitly check for None
+        if file_paths is None:
             print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
             all_files = get_all_files(directory, spec)
             total_size = calculate_total_size(all_files)
-            total_size_mb = total_size / (1024 * 1024)  # Convert to MB
+            total_size_mb = total_size / (1024 * 1024)
             
-            # Always show size and ask for confirmation
             if not ask_user_confirmation(total_size_mb):
                 print("Operation cancelled by user.")
                 return
@@ -176,13 +189,44 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None, use_g
             file_paths = all_files
             print(f"Including all {len(file_paths)} files from directory...")
 
+        # Initialize content for token estimation
+        full_content = ""
+        
+        # First pass to collect all content if token estimation is needed
+        if estimate_tokens_flag:
+            tree_output = '\n'.join(generate_tree(Path(directory), spec))
+            full_content += tree_output + "\n\n"
+            full_content += "## Included File Contents\nThe following files are included in full:\n\n"
+            
+            for file_path in file_paths:
+                if file_path.strip().startswith('#'):
+                    continue
+
+                if not os.path.exists(file_path):
+                    continue
+
+                try:
+                    if os.path.getsize(file_path) > 10 * 1024 * 1024:
+                        continue
+
+                    full_content += add_file_header(file_path)
+                    with open(file_path, 'r', encoding='utf-8') as infile:
+                        full_content += infile.read()
+                    full_content += '\n\n'
+                except Exception as e:
+                    print(f"Error reading file {file_path}: {str(e)}")
+            
+            total_tokens = estimate_tokens(full_content)
+        else:
+            total_tokens = None
+
+        # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
-            write_conversation_header(outfile, directory)
+            write_conversation_header(outfile, directory, total_tokens)
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             outfile.write(f"\n{tree_output}\n\n")
             
-            outfile.write("""
-## Included File Contents
+            outfile.write("""## Included File Contents
 The following files are included in full:
 
 """)
@@ -196,7 +240,7 @@ The following files are included in full:
                     continue
 
                 try:
-                    if os.path.getsize(file_path) > 10 * 1024 * 1024:  # Skip files larger than 10MB
+                    if os.path.getsize(file_path) > 10 * 1024 * 1024:
                         print(f"Warning: Skipping large file ({file_path}) - size exceeds 10MB")
                         continue
 
@@ -207,6 +251,8 @@ The following files are included in full:
                 except Exception as e:
                     print(f"Error reading file {file_path}: {str(e)}")
 
+        if total_tokens:
+            print(f"\nEstimated token count: {total_tokens:,}")
         print(f"Successfully created context file: {output_file}")
 
     except Exception as e:
@@ -229,18 +275,24 @@ def main():
     parser.add_argument('--directory', type=str, help='Project directory to generate tree from (default: current directory)')
     parser.add_argument('--no-gitignore', action='store_true', help='Disable .gitignore-based exclusions')
     parser.add_argument('--exclude-file', type=str, help='File containing additional exclude patterns')
+    parser.add_argument('--estimate-tokens', action='store_true', help='Estimate token count of the generated file')
 
     args = parser.parse_args()
 
-    # Explicitly handle the case when no files are specified
-    files_to_merge = None  # Change to None as default
+    files_to_merge = None
     if args.files_list:
         files_to_merge = read_files_from_txt(args.files_list)
     elif args.files:
         files_to_merge = args.files
-    # Note: if neither are specified, files_to_merge remains None
 
-    merge_files(files_to_merge, args.output, args.directory, not args.no_gitignore, args.exclude_file)
+    merge_files(
+        files_to_merge, 
+        args.output, 
+        args.directory, 
+        not args.no_gitignore, 
+        args.exclude_file,
+        args.estimate_tokens
+    )
 
 if __name__ == "__main__":
     main()

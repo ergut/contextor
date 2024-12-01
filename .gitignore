@@ -41,3 +41,7 @@ ENV/
 # Logs and databases
 *.log
 *.sqlite
+
+
+context-file.txt
+project_context.txt
