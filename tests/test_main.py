@@ -217,3 +217,49 @@ def test_merge_files_with_context(test_dir):
         assert "Project Overview" in content, "Prefix content missing"
         assert "Additional Info" in content, "Appendix content missing"
         assert "print('main')" in content, "Main file content missing"
+
+import pytest
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+def test_pip_install_editable(tmp_path):
+    """Test pip install -e . works correctly"""
+    # Create minimal package structure
+    pkg_dir = tmp_path / "test_package"
+    pkg_dir.mkdir()
+    
+    # Create pyproject.toml
+    with open(pkg_dir / "pyproject.toml", "w") as f:
+        f.write("""
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "test_package"
+version = "0.1.0"
+description = "Test package"
+""")
+    
+    # Create setup.py
+    with open(pkg_dir / "setup.py", "w") as f:
+        f.write("""
+from setuptools import setup, find_packages
+setup(name="test_package", packages=find_packages())
+""")
+
+    # Create package
+    (pkg_dir / "test_package").mkdir()
+    (pkg_dir / "test_package" / "__init__.py").touch()
+    
+    # Run pip install -e
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-e", "."],
+        cwd=pkg_dir,
+        capture_output=True,
+        text=True
+    )
+    
+    assert result.returncode == 0, f"Installation failed:\n{result.stderr}"

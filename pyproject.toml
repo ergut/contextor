@@ -4,15 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codecontextor"
-dynamic = ["version"]
+version = "1.0.3"
 description = "Create context files from your codebase for AI conversations"
+readme = "README.md"
+authors = [
+    {name = "Salih Ergüt", email = "salih.ergut@gmail.com"}
+]
 requires-python = ">=3.8"
+dependencies = ["pathspec>=0.12.1"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3"
+]
+
+[project.scripts]
+codecontextor = "codecontextor.main:main"
 
 [tool.pytest.ini_options]
-addopts = [
-    "--verbose",
-    "--cov=codecontextor",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-]
+addopts = ["--verbose", "--cov=codecontextor", "--cov-report=term-missing", "--cov-report=html"]
 testpaths = ["tests"]
