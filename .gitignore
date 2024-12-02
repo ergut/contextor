@@ -42,6 +42,12 @@ ENV/
 *.log
 *.sqlite
 
+# Test coverage
+.coverage
+htmlcov/
+coverage.xml
+.coverage.*
+
 
 context-file.txt
 project_context.txt

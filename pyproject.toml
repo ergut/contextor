@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codecontextor"
+dynamic = ["version"]
+description = "Create context files from your codebase for AI conversations"
+requires-python = ">=3.8"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--verbose",
+    "--cov=codecontextor",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+testpaths = ["tests"]

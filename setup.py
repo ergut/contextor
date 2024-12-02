@@ -50,4 +50,9 @@ setup(
             "codecontextor=codecontextor.main:main",
         ],
     },
+    tests_require=[
+        'pytest>=8.3.0',
+        'pytest-cov>=4.1.0',
+        'pytest-xdist>=3.5.0',
+    ],
 )
