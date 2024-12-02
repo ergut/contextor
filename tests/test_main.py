@@ -332,5 +332,73 @@ file3.txt
         print(f"Got empty list as expected: {'✓' if files == [] else '✗'}")
         self.assertEqual(files, [], "Should return empty list for non-existent file")
 
+    def test_merge_files_with_context(self):
+        """Test merging files with prefix and appendix"""
+        print("\nTEST: Merging files with context files")
+        print("-"*40)
+        
+        # Create test context files
+        prefix_content = "# Project Overview\nThis is a test project."
+        appendix_content = "# Additional Info\nDeployment steps..."
+        
+        prefix_file = os.path.join(self.test_dir, "prefix.txt")
+        appendix_file = os.path.join(self.test_dir, "appendix.txt")
+        output_file = os.path.join(self.test_dir, "output.txt")
+        
+        with open(prefix_file, 'w') as f:
+            f.write(prefix_content)
+        with open(appendix_file, 'w') as f:
+            f.write(appendix_content)
+            
+        print(f"Created prefix file: {prefix_file}")
+        print(f"Created appendix file: {appendix_file}")
+        
+        # Merge files with context
+        merge_files(
+            file_paths=[os.path.join(self.test_dir, "src/main.py")],
+            output_file=output_file,
+            directory=self.test_dir,
+            prefix_file=prefix_file,
+            appendix_file=appendix_file
+        )
+        
+        # Check output
+        with open(output_file, 'r') as f:
+            content = f.read()
+            
+        print("\nChecking output content:")
+        checks = [
+            ("Project Overview", "Prefix content", True),
+            ("Additional Info", "Appendix content", True),
+            ("print('main')", "Main file content", True)
+        ]
+        
+        for text, description, should_exist in checks:
+            found = text in content
+            print(f"- {description}: {'✓' if found == should_exist else '✗'}")
+            if should_exist:
+                self.assertIn(text, content)
+            else:
+                self.assertNotIn(text, content)
+                
+    def test_merge_files_missing_context(self):
+        """Test behavior with missing context files"""
+        print("\nTEST: Handling missing context files")
+        print("-"*40)
+        
+        output_file = os.path.join(self.test_dir, "output.txt")
+        nonexistent_file = os.path.join(self.test_dir, "doesnotexist.txt")
+        
+        # Should not fail when context files don't exist
+        merge_files(
+            file_paths=[os.path.join(self.test_dir, "src/main.py")],
+            output_file=output_file,
+            directory=self.test_dir,
+            prefix_file=nonexistent_file,
+            appendix_file=nonexistent_file
+        )
+        
+        self.assertTrue(os.path.exists(output_file), "Output file should be created")
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

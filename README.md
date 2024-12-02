@@ -63,6 +63,12 @@ codecontextor --exclude-file exclude_patterns.txt
 
 # Ignore .gitignore
 codecontextor --no-gitignore
+
+# Include essential context and supplementary info
+codecontextor --prefix-file project_overview.txt --appendix-file api_docs.txt
+
+# Add schemas and deployment guides
+codecontextor --prefix-file schemas.txt --appendix-file deployment.txt
 ```
 
 ## Command Line Options 🎛️
@@ -72,7 +78,11 @@ codecontextor --no-gitignore
 | `--directory` | Project directory (default: current) |
 | `--files` | Specific files to include |
 | `--files-list` | File containing list of files |
+| `--smart-select` | Automatically select important files like entry points, configs, and docs |
+| `--prefix-file` | Essential context to add at start (schemas, overview) |
+| `--appendix-file` | Supplementary info to add at end (docs, guides) |
 | `--output` | Output filename (default: project_context.txt) |
+| `--estimate-tokens` | Calculate and show estimated token count in the output file |
 | `--no-gitignore` | Disable .gitignore patterns |
 | `--exclude-file` | Additional exclude patterns file |
 

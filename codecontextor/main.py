@@ -230,7 +230,7 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
-                smart_select=False):
+                smart_select=False, prefix_file=None, appendix_file=None):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -297,6 +297,13 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
 
         # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
+
+            # Write prefix if provided
+            if prefix_file and os.path.exists(prefix_file):
+                with open(prefix_file, 'r', encoding='utf-8') as pf:
+                    outfile.write(pf.read())
+                    outfile.write("\n\n")
+
             write_conversation_header(outfile, directory, total_tokens)
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             outfile.write(f"\n{tree_output}\n\n")
@@ -328,6 +335,11 @@ The following files are included in full:
                     outfile.write('\n\n')
                 except Exception as e:
                     print(f"Error reading file {file_path}: {str(e)}")
+
+            if appendix_file and os.path.exists(appendix_file):
+                outfile.write("\n# Appendix\n")
+                with open(appendix_file, 'r') as af:
+                    outfile.write(af.read())
 
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")
@@ -411,6 +423,19 @@ Notes:
         action='store_true',
         help='Automatically select important files like entry points, configs, and docs'
     )
+
+    context_group = parser.add_argument_group('context arguments')
+    context_group.add_argument(
+        '--prefix-file',
+        type=str,
+        help='File containing essential context to add at the start'
+    )
+    context_group.add_argument(
+        '--appendix-file',
+        type=str,
+        help='File containing supplementary information to add at the end'
+    )
+
     
     # Output options
     output_group = parser.add_argument_group('output arguments')
@@ -460,6 +485,8 @@ Notes:
         args.exclude_file,
         args.estimate_tokens,
         args.smart_select,
+        prefix_file=args.prefix_file,
+        appendix_file=args.appendix_file,
     )
 
 if __name__ == "__main__":
