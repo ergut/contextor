@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.1.0] - 2024-12-02
+### Added
+- Support for prefix and appendix files
+- Smart file selection and improved files-list handling
+
+### Changed
+- Migrated test framework from unittest to pytest
+- Enhanced documentation and CLI help text
+
+### Fixed
+- Updated pyproject.toml configuration
+
 ## [1.0.3] - 2024-12-01
 
 ### Added
