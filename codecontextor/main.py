@@ -12,6 +12,8 @@ Features:
 - Custom prefix text support
 - Multiple input methods (direct file list or file containing paths)
 - Automatic inclusion of all files when no specific files are provided
+- Smart selection of important files
+- Clear listing of included files
 
 Usage:
     python script.py --files file1.txt file2.txt --output merged.txt
@@ -19,6 +21,7 @@ Usage:
     python script.py --prefix-file prefix.txt --directory ./project --no-gitignore
     python script.py --exclude-file exclude.txt
     python script.py --directory ./project  # Will include all files
+    python script.py --smart-select  # Will include only important files
 
 Author: Salih Ergüt
 """
@@ -56,6 +59,28 @@ Project Path: {project_path}"""
 ## Available Files
 """
     outfile.write(header)
+
+def write_included_files_section(outfile, files, base_path):
+    """Write a section listing all included files"""
+    outfile.write("""
+## Files Included in Full
+The following files are included in their entirety in this context:
+
+""")
+    
+    for file_path in files:
+        # Convert to relative path for cleaner output
+        try:
+            rel_path = os.path.relpath(file_path, base_path)
+            outfile.write(f"- {rel_path}\n")
+        except ValueError:
+            outfile.write(f"- {file_path}\n")
+    
+    outfile.write("""
+Note for humans: To modify this selection for future runs, copy these paths to a text file and use:
+codecontextor --files-list your_file.txt
+
+""")
 
 def parse_patterns_file(patterns_file_path):
     """Parse a patterns file and return a list of patterns"""
@@ -120,14 +145,59 @@ def generate_tree(path, spec=None, prefix=''):
 
     return entries
 
-def get_all_files(directory, spec):
+def is_important_file(file_path):
+    """Determine if a file is likely to be important based on predefined rules."""
+    path_lower = str(file_path).lower()
+    
+    # Entry points
+    if any(file in path_lower for file in [
+        "main.py", "app.py", "index.py", "server.py",
+        "main.js", "index.js", "app.js",
+        "main.go", "main.rs", "main.cpp"
+    ]):
+        return True
+    
+    # Configuration files
+    if any(path_lower.endswith(ext) for ext in [
+        ".yml", ".yaml", ".json", ".toml", ".ini", ".cfg",
+        "requirements.txt", "package.json", "cargo.toml", "go.mod"
+    ]):
+        return True
+    
+    # Documentation
+    if any(doc in path_lower for doc in [
+        "readme", "contributing", "changelog", "license",
+        "documentation", "docs/", "wiki/"
+    ]):
+        return True
+    
+    return False
+
+def get_all_files(directory, spec, smart_select=False):
     """Get list of all files in directory that aren't excluded by spec"""
     files = []
     for root, _, filenames in os.walk(directory):
         for filename in filenames:
             file_path = Path(os.path.join(root, filename))
-            if not should_exclude(file_path, directory, spec):
-                files.append(str(file_path))
+            
+            # Skip if excluded by gitignore patterns
+            if should_exclude(file_path, directory, spec):
+                continue
+                
+            # Skip files larger than 10MB
+            try:
+                if file_path.stat().st_size > 10 * 1024 * 1024:
+                    print(f"Warning: Skipping large file ({file_path}) - size exceeds 10MB")
+                    continue
+            except OSError:
+                continue
+            
+            # Apply smart selection if enabled
+            if smart_select and not is_important_file(file_path):
+                continue
+                
+            files.append(str(file_path))
+    
     return sorted(files)
 
 def calculate_total_size(file_paths):
@@ -159,7 +229,8 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 """
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
-                use_gitignore=True, exclude_file=None, estimate_tokens_flag=False):
+                use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
+                smart_select=False):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -177,8 +248,12 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
 
         if file_paths is None:
-            print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
-            all_files = get_all_files(directory, spec)
+            if smart_select:
+                print("\nUsing smart file selection (including only key files)...")
+            else:
+                print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
+            
+            all_files = get_all_files(directory, spec, smart_select)
             total_size = calculate_total_size(all_files)
             total_size_mb = total_size / (1024 * 1024)
             
@@ -187,7 +262,7 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 return
             
             file_paths = all_files
-            print(f"Including all {len(file_paths)} files from directory...")
+            print(f"Including {len(file_paths)} files from directory...")
 
         # Initialize content for token estimation
         full_content = ""
@@ -226,6 +301,9 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             outfile.write(f"\n{tree_output}\n\n")
             
+            # Add section listing included files
+            write_included_files_section(outfile, file_paths, directory)
+            
             outfile.write("""## Included File Contents
 The following files are included in full:
 
@@ -259,14 +337,36 @@ The following files are included in full:
         print(f"Error creating context file: {str(e)}")
 
 def read_files_from_txt(file_path):
-    """Read list of files from a text file"""
+    """Read list of files from a text file.
+    
+    Supports both plain paths and bullet-point format:
+        path/to/file.txt
+        - path/to/another_file.py
+        
+    Ignores:
+        - Empty lines
+        - Comment lines (starting with #)
+        - Lines that become empty after stripping
+    """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            return [line.strip() for line in f if line.strip()]
+            result = []
+            for line in f:
+                # Skip empty lines and comments
+                stripped_line = line.strip()
+                if not stripped_line or stripped_line.startswith('#'):
+                    continue
+                    
+                # Remove bullet point if present and strip again
+                cleaned_line = stripped_line.lstrip('- ').strip()
+                if cleaned_line:  # Add only non-empty lines
+                    result.append(cleaned_line)
+                    
+            return result
     except Exception as e:
         print(f"Error reading file list: {str(e)}")
         return []
-
+    
 def main():
     parser = argparse.ArgumentParser(
         description='Create a project context file for LLM conversations.',
@@ -275,6 +375,9 @@ def main():
 Examples:
   # Include all files in current directory (will ask for confirmation)
   %(prog)s
+
+  # Use smart file selection to automatically pick important files
+  %(prog)s --smart-select
 
   # Include specific files from a project
   %(prog)s --directory ./my_project --files main.py config.yaml
@@ -302,6 +405,11 @@ Notes:
         '--files-list', 
         type=str, 
         help='Path to a text file containing list of files to include (one file per line)'
+    )
+    file_group.add_argument(
+        '--smart-select',
+        action='store_true',
+        help='Automatically select important files like entry points, configs, and docs'
     )
     
     # Output options
@@ -350,7 +458,8 @@ Notes:
         args.directory, 
         not args.no_gitignore, 
         args.exclude_file,
-        args.estimate_tokens
+        args.estimate_tokens,
+        args.smart_select,
     )
 
 if __name__ == "__main__":

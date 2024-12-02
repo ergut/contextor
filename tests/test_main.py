@@ -10,7 +10,8 @@ from codecontextor.main import (
     should_exclude,
     merge_files,
     calculate_total_size,
-    get_all_files
+    get_all_files,
+    read_files_from_txt,
 )
 
 class TestCodeContextor(unittest.TestCase):
@@ -238,6 +239,98 @@ class TestCodeContextor(unittest.TestCase):
                     self.assertIn(text, content)
                 else:
                     self.assertNotIn(text, content)
+
+    def test_read_files_from_txt_formats(self):
+        """Test reading files list with different formats"""
+        print("\nTEST: Reading files list with different formats")
+        print("-"*40)
+
+        # Create a test file with mixed formats
+        file_list_path = os.path.join(self.test_dir, "files_list.txt")
+        test_content = """
+# Test files list
+src/main.py
+- src/utils.py
+  - tests/test_main.py  
+docs/README.md
+  plain_file.txt
+- with_dash.txt
+"""
+        print("Creating test file with content:")
+        print(test_content)
+        
+        with open(file_list_path, 'w') as f:
+            f.write(test_content)
+        
+        expected_files = [
+            'src/main.py',
+            'src/utils.py',
+            'tests/test_main.py',
+            'docs/README.md',
+            'plain_file.txt',
+            'with_dash.txt'
+        ]
+        
+        # Read and check files
+        files = read_files_from_txt(file_list_path)
+        
+        print("\nChecking parsed files:")
+        print("-"*40)
+        for expected, actual in zip(expected_files, files):
+            print(f"Expected: {expected}")
+            print(f"Got:      {actual}")
+            print(f"Match:    {'✓' if expected == actual else '✗'}\n")
+            
+        self.assertEqual(files, expected_files, "Files list not parsed correctly")
+        self.assertEqual(len(files), len(expected_files), "Not all files were parsed")
+
+    def test_read_files_from_txt_empty_and_comments(self):
+        """Test reading files list with empty lines and comments"""
+        print("\nTEST: Reading files list with empty lines and comments")
+        print("-"*40)
+
+        file_list_path = os.path.join(self.test_dir, "files_list_with_comments.txt")
+        test_content = """
+# This is a comment
+- file1.txt
+
+# Another comment
+  - file2.txt  
+
+file3.txt
+# End comment
+"""
+        print("Creating test file with content:")
+        print(test_content)
+        
+        with open(file_list_path, 'w') as f:
+            f.write(test_content)
+        
+        expected_files = ['file1.txt', 'file2.txt', 'file3.txt']
+        
+        files = read_files_from_txt(file_list_path)
+        
+        print("\nChecking parsed files:")
+        print("-"*40)
+        for expected, actual in zip(expected_files, files):
+            print(f"Expected: {expected}")
+            print(f"Got:      {actual}")
+            print(f"Match:    {'✓' if expected == actual else '✗'}\n")
+        
+        self.assertEqual(files, expected_files, "Files list not parsed correctly")
+        self.assertEqual(len(files), len(expected_files), "Not all files were parsed")
+
+    def test_read_files_from_txt_error_handling(self):
+        """Test error handling when reading files list"""
+        print("\nTEST: Reading non-existent files list")
+        print("-"*40)
+        
+        non_existent_file = os.path.join(self.test_dir, "does_not_exist.txt")
+        print(f"Attempting to read: {non_existent_file}")
+        
+        files = read_files_from_txt(non_existent_file)
+        print(f"Got empty list as expected: {'✓' if files == [] else '✗'}")
+        self.assertEqual(files, [], "Should return empty list for non-existent file")
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
