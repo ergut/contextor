@@ -268,14 +268,73 @@ def read_files_from_txt(file_path):
         return []
 
 def main():
-    parser = argparse.ArgumentParser(description='Create a project context file for LLM conversations.')
-    parser.add_argument('--files', nargs='+', help='List of files to include in full')
-    parser.add_argument('--files-list', type=str, help='Text file containing list of files to include')
-    parser.add_argument('--output', type=str, default='project_context.txt', help='Output file name')
-    parser.add_argument('--directory', type=str, help='Project directory to generate tree from (default: current directory)')
-    parser.add_argument('--no-gitignore', action='store_true', help='Disable .gitignore-based exclusions')
-    parser.add_argument('--exclude-file', type=str, help='File containing additional exclude patterns')
-    parser.add_argument('--estimate-tokens', action='store_true', help='Estimate token count of the generated file')
+    parser = argparse.ArgumentParser(
+        description='Create a project context file for LLM conversations.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Include all files in current directory (will ask for confirmation)
+  %(prog)s
+
+  # Include specific files from a project
+  %(prog)s --directory ./my_project --files main.py config.yaml
+
+  # Use a list of files from files.txt
+  %(prog)s --files-list files.txt --output context.txt
+
+  # Exclude specific patterns and estimate tokens
+  %(prog)s --exclude-file exclude.txt --estimate-tokens
+
+Notes:
+  - If no files are specified, all files in directory will be included (with confirmation)
+  - Files larger than 10MB are automatically skipped
+  - The .gitignore patterns are respected by default
+""")
+
+    # File selection options
+    file_group = parser.add_argument_group('file selection arguments')
+    file_group.add_argument(
+        '--files', 
+        nargs='+', 
+        help='Space-separated list of files to include in full (e.g., --files main.py config.yaml)'
+    )
+    file_group.add_argument(
+        '--files-list', 
+        type=str, 
+        help='Path to a text file containing list of files to include (one file per line)'
+    )
+    
+    # Output options
+    output_group = parser.add_argument_group('output arguments')
+    output_group.add_argument(
+        '--output', 
+        type=str, 
+        default='project_context.txt',
+        help='Name of the output file (default: project_context.txt)'
+    )
+    output_group.add_argument(
+        '--estimate-tokens', 
+        action='store_true',
+        help='Calculate and show estimated token count in the output file'
+    )
+
+    # Directory and exclusion options
+    dir_group = parser.add_argument_group('directory and exclusion arguments')
+    dir_group.add_argument(
+        '--directory', 
+        type=str, 
+        help='Root directory to analyze (default: current directory)'
+    )
+    dir_group.add_argument(
+        '--no-gitignore', 
+        action='store_true',
+        help='Ignore .gitignore patterns when scanning directory'
+    )
+    dir_group.add_argument(
+        '--exclude-file', 
+        type=str, 
+        help='Path to a file containing additional exclude patterns (uses .gitignore syntax)'
+    )
 
     args = parser.parse_args()
 
