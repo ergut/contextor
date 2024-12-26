@@ -1,5 +1,7 @@
 # CodeContextor 🚀
 
+Note: This package replaces the deprecated `codecontextor` package.
+
 Ever needed to explain your codebase to ChatGPT or Claude? CodeContextor creates a perfect snapshot of your project in seconds:
 
 ```bash
