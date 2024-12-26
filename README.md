@@ -1,5 +1,7 @@
 # CodeContextor 🚀
 
+Here's a secret about AI coding assistants: they're only as good as the context you give them! Forget chasing perfect prompts or waiting for the next big model - what truly transforms an AI assistant into a reliable coding partner is crystal-clear context about your project.
+
 Ever needed to explain your codebase to ChatGPT or Claude? CodeContextor creates a perfect snapshot of your project in seconds:
 
 ```bash

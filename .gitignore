@@ -48,6 +48,7 @@ htmlcov/
 coverage.xml
 .coverage.*
 
+.pytest_cache
 
 context-file.txt
 project_context.txt
