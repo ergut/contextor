@@ -30,12 +30,12 @@ pytest tests/specific_test.py  # Run specific test file
 
 View coverage in terminal:
 ```bash
-pytest --cov=codecontextor
+pytest --cov=contextor
 ```
 
 Generate HTML report:
 ```bash
-pytest --cov=codecontextor --cov-report=html
+pytest --cov=contextor --cov-report=html
 ```
 Open `htmlcov/index.html` to view detailed coverage report.
 

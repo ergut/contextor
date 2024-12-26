@@ -1,12 +1,12 @@
-# CodeContextor 🚀
+# Contextor 🚀
 
 Here's a secret about AI coding assistants: they're only as good as the context you give them! Forget chasing perfect prompts or waiting for the next big model - what truly transforms an AI assistant into a reliable coding partner is crystal-clear context about your project.
 
-Ever needed to explain your codebase to ChatGPT or Claude? CodeContextor creates a perfect snapshot of your project in seconds:
+Ever needed to explain your codebase to ChatGPT or Claude? Contextor creates a perfect snapshot of your project in seconds:
 
 ```bash
 # That's it! Just run:
-codecontextor --directory ./my_project
+contextor --directory ./my_project
 ```
 
 ## What You Get ✨
@@ -27,16 +27,16 @@ Just paste this into your AI chat and start coding! The AI can see your project 
 
 ```bash
 # Install
-pip install codecontextor
+pip install contextor
 
 # Run (will include all files)
-codecontextor --directory ./my_project
+contextor --directory ./my_project
 
 # Or specify key files only
-codecontextor --files main.py config.yaml
+contextor --files main.py config.yaml
 ```
 
-## Why CodeContextor? 🎯
+## Why Contextor? 🎯
 
 - **Simple**: One command to create perfect context for AI conversations
 - **Smart**: Respects .gitignore, handles large files, includes safety checks
@@ -58,19 +58,19 @@ Need more control? We've got you covered:
 
 ```bash
 # Include files listed in a text file
-codecontextor --files-list important_files.txt
+contextor --files-list important_files.txt
 
 # Custom exclude patterns
-codecontextor --exclude-file exclude_patterns.txt
+contextor --exclude-file exclude_patterns.txt
 
 # Ignore .gitignore
-codecontextor --no-gitignore
+contextor --no-gitignore
 
 # Include essential context and supplementary info
-codecontextor --prefix-file project_overview.txt --appendix-file api_docs.txt
+contextor --prefix-file project_overview.txt --appendix-file api_docs.txt
 
 # Add schemas and deployment guides
-codecontextor --prefix-file schemas.txt --appendix-file deployment.txt
+contextor --prefix-file schemas.txt --appendix-file deployment.txt
 ```
 
 ## Command Line Options 🎛️
@@ -107,7 +107,7 @@ __pycache__/
 
 ## Safety First 🛡️
 
-CodeContextor looks out for you:
+Contextor looks out for you:
 - Calculates total file size
 - Shows warning for large directories
 - Asks for confirmation
@@ -118,10 +118,10 @@ CodeContextor looks out for you:
 
 ```bash
 # From PyPI (recommended)
-pip install codecontextor
+pip install contextor
 
 # From source
-git clone https://github.com/ergut/codecontextor
+git clone https://github.com/ergut/contextor
 pip install -r requirements.txt
 ```
 
@@ -139,9 +139,9 @@ MIT License - See [LICENSE](LICENSE) file
 
 ## Support 💬
 
-- 🐛 [Report issues](https://github.com/ergut/codecontextor/issues)
-- 💡 [Feature requests](https://github.com/ergut/codecontextor/issues)
-- 📖 [Documentation](https://github.com/ergut/codecontextor)
+- 🐛 [Report issues](https://github.com/ergut/contextor/issues)
+- 💡 [Feature requests](https://github.com/ergut/contextor/issues)
+- 📖 [Documentation](https://github.com/ergut/contextor)
 
 ## Author ✍️
 

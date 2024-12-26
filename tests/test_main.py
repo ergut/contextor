@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
 from pathspec import PathSpec
-from codecontextor.main import (
+from contextor.main import (
     generate_tree,
     parse_patterns_file,
     should_exclude,

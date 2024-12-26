@@ -78,7 +78,7 @@ The following files are included in their entirety in this context:
     
     outfile.write("""
 Note for humans: To modify this selection for future runs, copy these paths to a text file and use:
-codecontextor --files-list your_file.txt
+contextor --files-list your_file.txt
 
 """)
 
