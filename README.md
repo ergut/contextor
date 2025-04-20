@@ -6,10 +6,16 @@ Ever needed to explain your codebase to ChatGPT or Claude? Contextor creates a p
 
 ```bash
 # That's it! Just run:
-contextor --directory ./my_project
+contextor
 ```
+📋 **What is Contextor?**
+> Contextor is **not** an IDE or code editor like Cursor. It's a zero-friction tool that makes your codebase instantly pasteable into ChatGPT, Claude, or any AI assistant. Think of it as a "make my repo AI-ready" button that creates a single file with your project structure and selected file contents.
 
 ## What You Get ✨
+
+Interactive file selection right in your terminal:
+
+![Interactive File Picker](https://your-image-url-here.png)
 
 ```text
 my_project/
@@ -29,22 +35,31 @@ Just paste this into your AI chat and start coding! The AI can see your project 
 # Install
 pip install contextor
 
-# Run (will include all files)
-contextor --directory ./my_project
+# Run in interactive mode (default)
+contextor
+
+# Auto-select important files
+contextor --smart-select
 
 # Or specify key files only
 contextor --files main.py config.yaml
+
+# Copy result directly to clipboard
+contextor --copy
 ```
 
 ## Why Contextor? 🎯
 
 - **Simple**: One command to create perfect context for AI conversations
+- **Interactive**: Select files with a user-friendly interface right in your terminal
 - **Smart**: Respects .gitignore, handles large files, includes safety checks
 - **Flexible**: Include specific files or let the AI see everything
 - **Safe**: Warns you about size and skips files >10MB
+- **Binary-aware**: Automatically excludes binary files that wouldn't help AI assistants
 
 ## Features in Detail 🛠️
 
+- 🖱️ Interactive file selection with directory grouping
 - 📁 Complete project tree generation
 - 📄 Automatic or selective file inclusion
 - 🔒 .gitignore pattern support
@@ -84,6 +99,7 @@ contextor --files main.py config.yaml --copy
 | `--directory` | Project directory (default: current) |
 | `--files` | Specific files to include |
 | `--files-list` | File containing list of files |
+| `--interactive` | Launch interactive file selector (default mode) |
 | `--smart-select` | Automatically select important files like entry points, configs, and docs |
 | `--prefix-file` | Essential context to add at start (schemas, overview) |
 | `--appendix-file` | Supplementary info to add at end (docs, guides) |
@@ -95,14 +111,16 @@ contextor --files main.py config.yaml --copy
 
 ## Examples 📚
 
-### Include specific files (files-list.txt):
+### Include specific files (files-list.txt)
+
 ```text
 src/main.py
 config/settings.yaml
 README.md
 ```
 
-### Exclude patterns (exclude-patterns.txt):
+### Exclude patterns (exclude-patterns.txt)
+
 ```text
 *.pyc
 __pycache__/
@@ -113,10 +131,11 @@ __pycache__/
 ## Safety First 🛡️
 
 Contextor looks out for you:
+
 - Calculates total file size
 - Shows warning for large directories
 - Asks for confirmation
-- Skips files >10MB
+- Skips files >10MB and binary files
 - Respects .gitignore by default
 
 ## Installation Options 📦
@@ -138,6 +157,7 @@ pip install -r requirements.txt
 ## Contributing 🤝
 
 We love contributions! Check out [README.test.md](README.test.md) for:
+
 - Running tests
 - Test coverage details
 - Adding new features
@@ -159,6 +179,6 @@ Salih Ergüt
 
 ## Version 📋
 
-Current version: 1.0.3
+Current version: 1.3.0
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
