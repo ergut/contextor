@@ -1,6 +1,7 @@
 import pytest
 import os
-import shutil
+import sys
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
@@ -218,12 +219,6 @@ def test_merge_files_with_context(test_dir):
         assert "Additional Info" in content, "Appendix content missing"
         assert "print('main')" in content, "Main file content missing"
 
-import pytest
-import subprocess
-import sys
-import os
-from pathlib import Path
-
 def test_pip_install_editable(tmp_path):
     """Test pip install -e . works correctly"""
     # Create minimal package structure
@@ -263,3 +258,90 @@ setup(name="test_package", packages=find_packages())
     )
     
     assert result.returncode == 0, f"Installation failed:\n{result.stderr}"
+
+
+    def test_copy_to_clipboard(test_dir, monkeypatch):
+        """Test copying output file to clipboard"""
+        # Create output file
+        output_file = os.path.join(test_dir, "output.txt")
+        files_to_merge = [os.path.join(test_dir, "src/main.py")]
+        
+        # Mock the pyperclip.copy function
+        mock_copy = MagicMock()
+        monkeypatch.setattr('pyperclip.copy', mock_copy)
+        
+        # Mock input function for size confirmation (in case file is large)
+        monkeypatch.setattr('builtins.input', lambda _: 'y')
+        
+        # Import the copy_to_clipboard function - assuming it's defined at module level
+        from contextor.main import copy_to_clipboard
+        
+        # Generate the file
+        merge_files(files_to_merge, output_file, test_dir)
+        
+        # Test the clipboard function
+        copy_to_clipboard(output_file)
+        
+        # Verify the function was called
+        mock_copy.assert_called_once()
+        
+        # Optional: verify the content that was copied (if needed)
+        args, _ = mock_copy.call_args
+        assert "print('main')" in args[0], "Expected content not copied to clipboard"
+
+def test_copy_to_clipboard_size_warning_decline(test_dir, monkeypatch):
+    """Test declining to copy a large file to clipboard"""
+    # Create output file
+    output_file = os.path.join(test_dir, "output.txt")
+    files_to_merge = [os.path.join(test_dir, "src/main.py")]
+    
+    # Mock the pyperclip.copy function
+    mock_copy = MagicMock()
+    monkeypatch.setattr('pyperclip.copy', mock_copy)
+    
+    # Mock input function to decline the copy operation
+    monkeypatch.setattr('builtins.input', lambda _: 'n')
+    
+    # Import the copy_to_clipboard function
+    from contextor.main import copy_to_clipboard
+    
+    # Generate the file
+    merge_files(files_to_merge, output_file, test_dir)
+    
+    # Mock the file size to trigger the warning
+    original_getsize = os.path.getsize
+    def mock_getsize(path):
+        if path == output_file:
+            return 3 * 1024 * 1024  # Return 3MB for the test file
+        return original_getsize(path)
+    
+    monkeypatch.setattr('os.path.getsize', mock_getsize)
+    
+    # Test the clipboard function with declining the prompt
+    copy_to_clipboard(output_file)
+    
+    # Verify the copy function was not called
+    mock_copy.assert_not_called()
+
+def test_copy_to_clipboard_pyperclip_exception(test_dir, monkeypatch):
+    """Test handling of PyperclipException"""
+    # Create output file
+    output_file = os.path.join(test_dir, "output.txt")
+    files_to_merge = [os.path.join(test_dir, "src/main.py")]
+    
+    # Mock pyperclip.copy to raise an exception
+    import pyperclip
+    def mock_copy_with_exception(*args, **kwargs):
+        raise pyperclip.PyperclipException("Clipboard unavailable")
+    
+    monkeypatch.setattr('pyperclip.copy', mock_copy_with_exception)
+    
+    # Import the copy_to_clipboard function
+    from contextor.main import copy_to_clipboard
+    
+    # Generate the file
+    merge_files(files_to_merge, output_file, test_dir)
+    
+    # Test exception handling - should not raise an exception
+    result = copy_to_clipboard(output_file)
+    assert result is False, "Function should return False when pyperclip fails"

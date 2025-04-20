@@ -32,6 +32,7 @@ from pathlib import Path
 import pathspec
 from datetime import datetime
 import re
+import pyperclip
 
 def estimate_tokens(text):
     """Estimate the number of tokens in text using word-based approximation"""
@@ -227,10 +228,10 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 {'='*80}
 
 """
-
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
-                smart_select=False, prefix_file=None, appendix_file=None):
+                smart_select=False, prefix_file=None, appendix_file=None, 
+                copy_to_clipboard_flag=False):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -347,6 +348,9 @@ The following files are included in full:
 
     except Exception as e:
         print(f"Error creating context file: {str(e)}")
+    
+    if copy_to_clipboard_flag:
+        copy_to_clipboard(output_file)
 
 def read_files_from_txt(file_path):
     """Read list of files from a text file.
@@ -450,6 +454,12 @@ Notes:
         action='store_true',
         help='Calculate and show estimated token count in the output file'
     )
+    output_group.add_argument(
+        '--copy',
+        action='store_true',
+        help='Copy the generated context file to the system clipboard'
+    )
+
 
     # Directory and exclusion options
     dir_group = parser.add_argument_group('directory and exclusion arguments')
@@ -487,7 +497,26 @@ Notes:
         args.smart_select,
         prefix_file=args.prefix_file,
         appendix_file=args.appendix_file,
+        copy_to_clipboard_flag=args.copy,
     )
+
+def copy_to_clipboard(file_path, max_mb=2):
+    """Copy the contents of a file to the system clipboard with size safeguards"""
+    size_mb = os.path.getsize(file_path) / (1024*1024)
+    if size_mb > max_mb:
+        ans = input(f'Context file is {size_mb:.1f} MB – copy anyway? [y/N] ').lower()
+        if ans not in ('y', 'yes'):
+            return False
+    try:
+        with open(file_path, 'r', encoding='utf-8') as fp:
+            pyperclip.copy(fp.read())
+        print('✅  Project scope copied to clipboard.')
+        return True
+    except pyperclip.PyperclipException as err:
+        # Typical on fresh Linux boxes without xclip/xsel
+        print(f'⚠️  Clipboard unavailable ({err}).\n'
+              'Install xclip or xsel and try again, or open the file manually.')
+        return False
 
 if __name__ == "__main__":
     main()

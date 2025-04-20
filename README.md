@@ -51,6 +51,7 @@ contextor --files main.py config.yaml
 - ⚡ Large file protection
 - 🎮 Custom file exclusions
 - 📊 Size warnings and confirmations
+- 📋 Clipboard support for easy pasting
 
 ## Advanced Usage 🔧
 
@@ -71,6 +72,9 @@ contextor --prefix-file project_overview.txt --appendix-file api_docs.txt
 
 # Add schemas and deployment guides
 contextor --prefix-file schemas.txt --appendix-file deployment.txt
+
+# Copy directly to clipboard for immediate use with AI assistants
+contextor --files main.py config.yaml --copy
 ```
 
 ## Command Line Options 🎛️
@@ -85,6 +89,7 @@ contextor --prefix-file schemas.txt --appendix-file deployment.txt
 | `--appendix-file` | Supplementary info to add at end (docs, guides) |
 | `--output` | Output filename (default: project_context.txt) |
 | `--estimate-tokens` | Calculate and show estimated token count in the output file |
+| `--copy` | Copy the generated context file to system clipboard |
 | `--no-gitignore` | Disable .gitignore patterns |
 | `--exclude-file` | Additional exclude patterns file |
 
@@ -119,6 +124,11 @@ Contextor looks out for you:
 ```bash
 # From PyPI (recommended)
 pip install contextor
+
+# For Linux users, clipboard functionality requires xclip or xsel:
+# Ubuntu/Debian: sudo apt install xclip
+# Fedora: sudo dnf install xclip
+# Arch: sudo pacman -S xclip
 
 # From source
 git clone https://github.com/ergut/contextor
