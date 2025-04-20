@@ -261,46 +261,45 @@ def run_interactive_picker(directory, spec):
     
     print("\nScanning project files...")
 
-    try:
-        all_files = get_all_files(directory, spec, smart_select=False)
+    all_files = get_all_files(directory, spec, smart_select=False)
+    
+    # Create a list of important files for pre-selection
+    important_files = [f for f in all_files if is_important_file(f)]
+    
+    # Group files by directory for better organization
+    file_groups = {}
+    for file_path in all_files:
+        rel_path = os.path.relpath(file_path, directory)
+        dir_name = os.path.dirname(rel_path) or '.'
+        if dir_name not in file_groups:
+            file_groups[dir_name] = []
+        file_groups[dir_name].append(file_path)
+    
+    # Sort directories and files within directories
+    sorted_groups = sorted(file_groups.keys())
+    
+    # Build choices list
+    choices = []
+    for group in sorted_groups:
+        # Add a separator for each directory
+        choices.append(Separator(f"--- {group} ---"))
         
-        # Create a list of important files for pre-selection
-        important_files = [f for f in all_files if is_important_file(f)]
-        
-        # Group files by directory for better organization
-        file_groups = {}
-        for file_path in all_files:
+        # Add files in this directory
+        for file_path in sorted(file_groups[group]):
             rel_path = os.path.relpath(file_path, directory)
-            dir_name = os.path.dirname(rel_path) or '.'
-            if dir_name not in file_groups:
-                file_groups[dir_name] = []
-            file_groups[dir_name].append(file_path)
-        
-        # Sort directories and files within directories
-        sorted_groups = sorted(file_groups.keys())
-        
-        # Build choices list
-        choices = []
-        for group in sorted_groups:
-            # Add a separator for each directory
-            choices.append(Separator(f"--- {group} ---"))
-            
-            # Add files in this directory
-            for file_path in sorted(file_groups[group]):
-                rel_path = os.path.relpath(file_path, directory)
-                choices.append(questionary.Choice(
-                    rel_path,
-                    value=file_path,
-                    checked=file_path in important_files
-                ))
-        
+            choices.append(questionary.Choice(
+                rel_path,
+                value=file_path,
+                checked=file_path in important_files
+            ))
+    
+    try:
         # Show interactive selection dialog
         selected_files = questionary.checkbox(
-            "Select files to include in your context: "
-            + "(Use arrows to move, <space> to select, <a> to toggle all, <i> to invert, Ctrl+C to cancel)",
-            choices=choices
+            "Select files to include in your context:",
+            choices=choices,
+            instruction="Use arrows to move, <space> to select, <a> to toggle all, <i> to invert, <Enter> to confirm, Ctrl+C to cancel"
         ).ask()
-
         
         if selected_files is None:  # This happens when user cancels
             print("Selection cancelled. Exiting...")
@@ -471,7 +470,8 @@ def read_files_from_txt(file_path):
     
 def main():
     parser = argparse.ArgumentParser(
-        description='Create a project context file for LLM conversations.',
+        description='Create a project context file for LLM conversations. By default, runs in interactive mode.',
+
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -517,7 +517,7 @@ Notes:
     file_group.add_argument(
         '--interactive',
         action='store_true',
-        help='Launch interactive file selector to choose which files to include'
+        help='Launch interactive file selector (this is the default if no files are specified)'
     )
 
     context_group = parser.add_argument_group('context arguments')
@@ -589,12 +589,18 @@ Notes:
     spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
  
     files_to_merge = None
-    if args.interactive:
-        files_to_merge = run_interactive_picker(directory, spec)
-    elif args.files_list:
+    if args.files_list:
         files_to_merge = read_files_from_txt(args.files_list)
     elif args.files:
         files_to_merge = args.files
+    elif args.smart_select:
+        # Only use smart selection if explicitly requested
+        print("\nUsing smart file selection (including only key files)...")
+        files_to_merge = get_all_files(directory, spec, smart_select=True)
+    else:
+        # Default to interactive mode
+        files_to_merge = run_interactive_picker(directory, spec)
+
     merge_files(
         files_to_merge, 
         args.output, 
