@@ -26,7 +26,7 @@ Usage:
 Author: Salih Ergüt
 """
 
-import os
+import os, sys
 import argparse
 from pathlib import Path
 import pathspec
@@ -228,6 +228,67 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 {'='*80}
 
 """
+
+def run_interactive_picker(directory, spec):
+    """Allow user to interactively select files to include in the context"""
+    import questionary
+    from questionary import Separator
+    
+    print("\nScanning project files...")
+
+    try:
+        all_files = get_all_files(directory, spec, smart_select=False)
+        
+        # Create a list of important files for pre-selection
+        important_files = [f for f in all_files if is_important_file(f)]
+        
+        # Group files by directory for better organization
+        file_groups = {}
+        for file_path in all_files:
+            rel_path = os.path.relpath(file_path, directory)
+            dir_name = os.path.dirname(rel_path) or '.'
+            if dir_name not in file_groups:
+                file_groups[dir_name] = []
+            file_groups[dir_name].append(file_path)
+        
+        # Sort directories and files within directories
+        sorted_groups = sorted(file_groups.keys())
+        
+        # Build choices list
+        choices = []
+        for group in sorted_groups:
+            # Add a separator for each directory
+            choices.append(Separator(f"--- {group} ---"))
+            
+            # Add files in this directory
+            for file_path in sorted(file_groups[group]):
+                rel_path = os.path.relpath(file_path, directory)
+                choices.append(questionary.Choice(
+                    rel_path,
+                    value=file_path,
+                    checked=file_path in important_files
+                ))
+        
+        # Show interactive selection dialog
+        selected_files = questionary.checkbox(
+            "Select files to include in your context: "
+            + "(Use arrows to move, <space> to select, <a> to toggle all, <i> to invert, Ctrl+C to cancel)",
+            choices=choices
+        ).ask()
+
+        
+        if selected_files is None:  # This happens when user cancels
+            print("Selection cancelled. Exiting...")
+            sys.exit(0)
+            
+        return selected_files
+            
+    except KeyboardInterrupt:
+        print("\nSelection cancelled. Exiting...")
+        sys.exit(0)
+
+    
+
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
                 smart_select=False, prefix_file=None, appendix_file=None, 
@@ -427,6 +488,12 @@ Notes:
         action='store_true',
         help='Automatically select important files like entry points, configs, and docs'
     )
+    # Add this to your argument group
+    file_group.add_argument(
+        '--interactive',
+        action='store_true',
+        help='Launch interactive file selector to choose which files to include'
+    )
 
     context_group = parser.add_argument_group('context arguments')
     context_group.add_argument(
@@ -481,18 +548,34 @@ Notes:
 
     args = parser.parse_args()
 
+    # Create the directory and spec objects first
+    directory = args.directory or os.getcwd()
+    patterns = []
+
+    if not args.no_gitignore:
+        gitignore_path = os.path.join(directory, '.gitignore')
+        gitignore_patterns = parse_patterns_file(gitignore_path)
+        patterns.extend(gitignore_patterns)
+
+    if args.exclude_file:
+        exclude_patterns = parse_patterns_file(args.exclude_file)
+        patterns.extend(exclude_patterns)
+
+    spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
+ 
     files_to_merge = None
-    if args.files_list:
+    if args.interactive:
+        files_to_merge = run_interactive_picker(directory, spec)
+    elif args.files_list:
         files_to_merge = read_files_from_txt(args.files_list)
     elif args.files:
         files_to_merge = args.files
-
     merge_files(
         files_to_merge, 
         args.output, 
         args.directory, 
-        not args.no_gitignore, 
-        args.exclude_file,
+        not args.no_gitignore,  # We can keep this for consistency
+        args.exclude_file,      # Same here
         args.estimate_tokens,
         args.smart_select,
         prefix_file=args.prefix_file,
