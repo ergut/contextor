@@ -174,6 +174,27 @@ def is_important_file(file_path):
     
     return False
 
+def is_binary_file(file_path):
+    """Check if a file is likely to be binary based on extension or content"""
+    # First check extension
+    binary_extensions = {
+        '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.svg',
+        '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
+        '.zip', '.tar', '.gz', '.rar', '.7z', '.bin', '.exe', '.dll',
+        '.so', '.dylib', '.class', '.jar', '.pyc'
+    }
+    
+    if any(file_path.lower().endswith(ext) for ext in binary_extensions):
+        return True
+        
+    # If extension check is inconclusive, look at file content
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(1024)
+            return b'\0' in chunk  # Null bytes typically indicate binary content
+    except (IOError, PermissionError):
+        return True  # If we can't read it, best to assume it's binary
+
 def get_all_files(directory, spec, smart_select=False):
     """Get list of all files in directory that aren't excluded by spec"""
     files = []
@@ -184,7 +205,11 @@ def get_all_files(directory, spec, smart_select=False):
             # Skip if excluded by gitignore patterns
             if should_exclude(file_path, directory, spec):
                 continue
-                
+
+            # Skip binary files
+            if is_binary_file(str(file_path)):
+                continue
+                            
             # Skip files larger than 10MB
             try:
                 if file_path.stat().st_size > 10 * 1024 * 1024:
