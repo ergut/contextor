@@ -3,6 +3,9 @@ import subprocess
 
 DEFAULT_EXCLUSIONS = {
     '.git/',                  # Git metadata
+    '.conda/',                # Conda metadata
+    '.venv/',                 # Virtual environment
+    'venv/',                  # Virtual environment
     'node_modules/',          # NPM dependencies 
     '__pycache__/',           # Python cache
     '*.pyc',                  # Python compiled files
@@ -12,6 +15,18 @@ DEFAULT_EXCLUSIONS = {
     'build/',                 # Common build output 
     'target/',                # Maven/other build output
     '.DS_Store',              # macOS metadata
+    '.pytest_cache/',         # Pytest cache
+    '.coverage/',             # Coverage reports
+    'coverage/',              # Coverage reports (alternate location)
+    'tmp/',                   # Temporary files
+    'temp/',                  # Temporary files (alternate name)
+    '.next/',                 # Next.js build output
+    '.nuxt/',                 # Nuxt.js build output
+    'out/',                   # Common output directory
+    '.sass-cache/',           # Sass compilation cache
+    '__tests__/__snapshots__/', # Jest snapshots
+    '.ipynb_checkpoints/',    # Jupyter notebook checkpoints
+    '*.lock'                  # Lock files like package-lock.json or yarn.lock    
 }
 
 
