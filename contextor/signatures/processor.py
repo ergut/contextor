@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Set
 from .python import process_python_file
 from .markdown import format_markdown_toc
 
+from contextor.utils import should_exclude, is_binary_file
+
 def is_python_file(file_path: str) -> bool:
     """Check if file is a Python file."""
     return file_path.endswith('.py')
@@ -55,8 +57,6 @@ def get_signature_files(directory: str,
     Returns:
         List of file paths for signature extraction
     """
-    # Import these here to avoid circular imports
-    from contextor.main import should_exclude, is_binary_file
     
     # Convert included_files to a set for O(1) lookups
     included_set = set(os.path.abspath(f) for f in included_files)

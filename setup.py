@@ -1,7 +1,3 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-setup(
-    name="contextor",
-    packages=find_packages(),
-    python_requires=">=3.8",
-)
+setup()

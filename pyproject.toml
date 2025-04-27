@@ -1,13 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "contextor"
-version = "1.1.0"
+version = "1.3.0"
 description = "Create context files from your codebase for AI conversations"
 readme = "README.md"
 authors = [
     {name = "Salih Ergüt", email = "salih.ergut@gmail.com"}
 ]
 requires-python = ">=3.8"
-dependencies = ["pathspec>=0.12.1"]
+dependencies = ["pathspec>=0.12.1", "pyperclip>=1.8.2", "questionary>=1.10.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -19,7 +23,7 @@ classifiers = [
 test = ["pytest>=7.0", "pytest-cov>=4.0"]
 
 [project.scripts]
-contextor = "contextor.main:main"
+contextor = "contextor.cli:run_cli"  # Change this line
 
 [tool.pytest.ini_options]
 addopts = ["--verbose", "--cov=contextor", "--cov-report=term-missing", "--cov-report=html"]
