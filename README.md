@@ -38,15 +38,14 @@ pip install contextor
 # Run in interactive mode (default)
 contextor
 
-# Auto-select important files
-contextor --smart-select
+# Use previously selected files without interactive picker
+contextor --use-scope
 
-# Or specify key files only
+# Specify files directly (skips interactive picker)
 contextor --files main.py config.yaml
 
 # Copy result directly to clipboard
 contextor --copy
-```
 
 ## Why Contextor? 🎯
 
@@ -60,33 +59,41 @@ contextor --copy
 ## Features in Detail 🛠️
 
 - 🖱️ Interactive file selection with directory grouping
+- 💾 Persistent selections via .contextor_scope file
 - 📁 Complete project tree generation
-- 📄 Automatic or selective file inclusion
 - 🔒 .gitignore pattern support
 - ⚡ Large file protection
-- 🎮 Custom file exclusions
-- 📊 Size warnings and confirmations
+- 🎮 Binary file detection and exclusion
+- 📊 Automatic token estimation
 - 📋 Clipboard support for easy pasting
+
+## Scope Files 📑
+
+Contextor uses a scope file (default: `.contextor_scope`) to remember your file selections:
+
+- When you run contextor interactively, your selections are saved to this file
+- Use `--use-scope` to skip interactive mode and use previously selected files
+- Use `--scope-file` to specify a custom scope file location
+- Use `--no-update-scope` to prevent updating the scope file after selection
+
+This makes it easy to reuse the same selection across multiple runs, perfect for when you're iterating on your code and need to regenerate context frequently.
 
 ## Advanced Usage 🔧
 
 Need more control? We've got you covered:
 
 ```bash
-# Include files listed in a text file
-contextor --files-list important_files.txt
+# Use a custom scope file
+contextor --scope-file my_project_scope.txt
+
+# Use previously selected files without interactive picker
+contextor --use-scope
 
 # Custom exclude patterns
 contextor --exclude-file exclude_patterns.txt
 
 # Ignore .gitignore
 contextor --no-gitignore
-
-# Include essential context and supplementary info
-contextor --prefix-file project_overview.txt --appendix-file api_docs.txt
-
-# Add schemas and deployment guides
-contextor --prefix-file schemas.txt --appendix-file deployment.txt
 
 # Copy directly to clipboard for immediate use with AI assistants
 contextor --files main.py config.yaml --copy
@@ -97,15 +104,12 @@ contextor --files main.py config.yaml --copy
 | Option | Description |
 |--------|-------------|
 | `--directory` | Project directory (default: current) |
-| `--files` | Specific files to include |
-| `--files-list` | File containing list of files |
-| `--interactive` | Launch interactive file selector (default mode) |
-| `--smart-select` | Automatically select important files like entry points, configs, and docs |
-| `--prefix-file` | Essential context to add at start (schemas, overview) |
-| `--appendix-file` | Supplementary info to add at end (docs, guides) |
+| `--files` | Specific files to include (skips interactive picker) |
+| `--scope-file` | Custom scope file path (default: .contextor_scope) |
+| `--use-scope` | Use scope file without interactive selection |
+| `--no-update-scope` | Don't update scope file after selection |
 | `--output` | Output filename (default: project_context.txt) |
-| `--estimate-tokens` | Calculate and show estimated token count in the output file |
-| `--copy` | Copy the generated context file to system clipboard |
+| `--copy` | Copy the generated context to system clipboard |
 | `--no-gitignore` | Disable .gitignore patterns |
 | `--exclude-file` | Additional exclude patterns file |
 

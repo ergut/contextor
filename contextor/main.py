@@ -629,25 +629,35 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Include all files in current directory (will ask for confirmation)
+  # Run in interactive mode (default)
   %(prog)s
 
-  # Use smart file selection to automatically pick important files
-  %(prog)s --smart-select
+  # Use a saved selection from .contextor_scope file without interactive picking
+  %(prog)s --use-scope
 
-  # Include specific files from a project
+  # Use custom scope file
+  %(prog)s --scope-file my_custom_scope.txt
+
+  # Include specific files from a project (skips interactive mode)
   %(prog)s --directory ./my_project --files main.py config.yaml
 
-  # Use a list of files from files.txt
-  %(prog)s --files-list files.txt --output context.txt
+  # Prevent updating the scope file after selection
+  %(prog)s --no-update-scope
+  
+  # Exclude specific patterns in addition to .gitignore
+  %(prog)s --exclude-file exclude_patterns.txt
 
-  # Exclude specific patterns and estimate tokens
-  %(prog)s --exclude-file exclude.txt --estimate-tokens
+  # Custom output file name (default is project_context.txt)
+  %(prog)s --output my_context.txt
+
 
 Notes:
-  - If no files are specified, all files in directory will be included (with confirmation)
+  - Interactive file selection is the default mode
+  - Selected files are saved to .contextor_scope for future use
   - Files larger than 10MB are automatically skipped
-  - The .gitignore patterns are respected by default
+  - Binary files are automatically excluded
+  - .gitignore patterns are respected by default
+  
 """)
 
     # File selection options
@@ -695,11 +705,6 @@ Notes:
         type=str, 
         default='project_context.txt',
         help='Name of the output file (default: project_context.txt)'
-    )
-    output_group.add_argument(
-        '--estimate-tokens', 
-        action='store_true',
-        help='Calculate and show estimated token count in the output file'
     )
     output_group.add_argument(
         '--copy',
@@ -790,7 +795,7 @@ Notes:
         args.directory, 
         not args.no_gitignore,  # We can keep this for consistency
         args.exclude_file,      # Same here
-        args.estimate_tokens,
+        True, # Always estimate tokens for the header
         False, # Smart selection is handled in the interactive picker
         prefix_file=args.prefix_file,
         appendix_file=args.appendix_file,
