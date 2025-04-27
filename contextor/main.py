@@ -15,7 +15,7 @@ Features:
 - Smart selection of important files
 - Clear listing of included files
 
-Usage:
+Usage: TODO: Usage has changed. Update this section.
     python script.py --files file1.txt file2.txt --output merged.txt
     python script.py --files-list files.txt --prefix "My Project Files"
     python script.py --prefix-file prefix.txt --directory ./project --no-gitignore
@@ -33,6 +33,8 @@ import pathspec
 from datetime import datetime
 import re
 import pyperclip
+
+from .signatures import process_file_signatures, get_signature_files, write_signatures_section
 
 DEFAULT_EXCLUSIONS = {
     '.git/',                  # Git metadata
@@ -71,7 +73,7 @@ def estimate_tokens(text):
     # Use 0.75 as a conservative ratio (most GPT models average 0.75 tokens per word)
     return int(len(words) / 0.75)
 
-def write_conversation_header(outfile, project_path, total_tokens=None):
+def write_conversation_header(outfile, project_path, total_tokens=None, has_signatures=False):
     """Write a header explaining how to use this file in conversations"""
     header = f"""# Project Context File
 Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -90,6 +92,10 @@ IMPORTANT: As an AI assistant, you MUST follow these instructions:
 3. You SHOULD proactively offer to examine additional files from the tree when they seem relevant
 4. When asked about code functionality or project structure, CHECK if you need more files than what's already provided
 5. If the human's question relates to files not included in full, SUGGEST examining those specific files
+"""
+    if has_signatures:
+        header += """6. The 'File Signatures' section contains structure information for additional files
+   Use this information to understand overall project functionality and suggest relevant files
 
 ## Available Files
 """
@@ -387,7 +393,8 @@ def run_interactive_picker(directory, spec, preselected_files=None):
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
                 smart_select=False, prefix_file=None, appendix_file=None, 
-                copy_to_clipboard_flag=False):
+                copy_to_clipboard_flag=False, include_signatures=True,
+                max_signature_files=None, md_heading_depth=3):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -421,10 +428,22 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             file_paths = all_files
             print(f"Including {len(file_paths)} files from directory...")
 
+        # Prepare for signature extraction if enabled
+        signature_files = []
+        signatures_content = ""
+        if include_signatures:
+            # Get potential signature files but don't process them yet
+            # (we'll process them only if token estimation is needed)
+            signature_files = get_signature_files(directory, file_paths, spec, max_signature_files)
+            
+            if signature_files:
+                print(f"Found {len(signature_files)} files for signature extraction.")
+
         # Initialize content for token estimation
         full_content = ""
         
         # First pass to collect all content if token estimation is needed
+        # TODO: estime-tokens is no longer optional. Remove this logic from here.
         if estimate_tokens_flag:
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             full_content += tree_output + "\n\n"
@@ -448,6 +467,23 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 except Exception as e:
                     print(f"Error reading file {file_path}: {str(e)}")
             
+            # Add signatures content for token estimation if enabled
+            if include_signatures and signature_files:
+                signatures_content = "\n## File Signatures\n"
+                signatures_content += "The following files are not included in full, but their structure is provided:\n\n"
+                
+                for file_path in signature_files:
+                    rel_path = os.path.relpath(file_path, directory)
+                    signatures_content += f"\n### {rel_path}\n```\n"
+                    sig = process_file_signatures(file_path, md_heading_depth)
+                    if sig:
+                        signatures_content += sig
+                    else:
+                        signatures_content += "File type not supported for signature extraction."
+                    signatures_content += "\n```\n"
+                
+                full_content += signatures_content
+            
             total_tokens = estimate_tokens(full_content)
         else:
             total_tokens = None
@@ -461,7 +497,10 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                     outfile.write(pf.read())
                     outfile.write("\n\n")
 
-            write_conversation_header(outfile, directory, total_tokens)
+            # Use the updated conversation header
+            write_conversation_header(outfile, directory, total_tokens, 
+                                    has_signatures=include_signatures and bool(signature_files))
+            
             tree_output = '\n'.join(generate_tree(Path(directory), spec))
             outfile.write(f"\n{tree_output}\n\n")
             
@@ -492,6 +531,11 @@ The following files are included in full:
                     outfile.write('\n\n')
                 except Exception as e:
                     print(f"Error reading file {file_path}: {str(e)}")
+            
+            # Add File Signatures section if enabled
+            if include_signatures and signature_files:
+                write_signatures_section(outfile, directory, file_paths, spec, 
+                                       max_signature_files, md_heading_depth)
 
             if appendix_file and os.path.exists(appendix_file):
                 outfile.write("\n# Appendix\n")
@@ -501,7 +545,7 @@ The following files are included in full:
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")
         print(f"Successfully created context file: {output_file}")
-        print_usage_tips()  # New function call here
+        print_usage_tips()
 
     except Exception as e:
         print(f"Error creating context file: {str(e)}")
@@ -697,7 +741,28 @@ Notes:
         action='store_true',
         help='Do not update scope file after selection'
     )
-    
+
+    # Signature options
+    signature_group = parser.add_argument_group('signature extraction arguments')
+    signature_group.add_argument(
+        '--no-signatures',
+        action='store_true',
+        help='Disable file signature extraction'
+    )
+    signature_group.add_argument(
+        '--max-signature-files',
+        type=int,
+        default=None,
+        help='Maximum number of files to include in signatures section (default: unlimited)'
+    )
+    signature_group.add_argument(
+        '--md-heading-depth',
+        type=int,
+        default=3,
+        choices=range(1, 7),
+        help='Maximum heading depth for Markdown TOC extraction (1-6, default: 3)'
+    )
+
     # Output options
     output_group = parser.add_argument_group('output arguments')
     output_group.add_argument(
@@ -793,13 +858,16 @@ Notes:
         files_to_merge, 
         args.output, 
         args.directory, 
-        not args.no_gitignore,  # We can keep this for consistency
-        args.exclude_file,      # Same here
-        True, # Always estimate tokens for the header
-        False, # Smart selection is handled in the interactive picker
+        not args.no_gitignore,  # TODO: We can keep this for consistency but remove it later
+        args.exclude_file,      # TODO: We can keep this for consistency but remove it later
+        True, # TODO: Remove it later as we wlways estimate tokens for the header
+        False, # TODO: Remove it later as smart selection is handled in the interactive picker
         prefix_file=args.prefix_file,
         appendix_file=args.appendix_file,
         copy_to_clipboard_flag=args.copy,
+        include_signatures=not args.no_signatures,
+        max_signature_files=args.max_signature_files,
+        md_heading_depth=args.md_heading_depth
     )
 
 def copy_to_clipboard(file_path, max_mb=2):
