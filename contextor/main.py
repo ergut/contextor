@@ -109,7 +109,7 @@ The following files are included in their entirety in this context:
             outfile.write(f"- {rel_path}\n")
         except ValueError:
             outfile.write(f"- {file_path}\n")
-    
+    outfile.write("\n")
 
 def parse_patterns_file(patterns_file_path):
     """Parse a patterns file and return a list of patterns"""
@@ -451,7 +451,7 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             write_conversation_header(outfile, directory, total_tokens, 
                                     has_signatures=include_signatures and bool(signature_files))
             
-            tree_output = '\n'.join(generate_tree(Path(directory), spec))
+            tree_output = '\n'.join(generate_tree(Path(directory), spec, '', git_tracked_files))
             outfile.write(f"\n{tree_output}\n\n")
             
             # Add section listing included files
