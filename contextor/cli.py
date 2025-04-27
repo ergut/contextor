@@ -15,6 +15,8 @@ from contextor.main import (
     run_interactive_picker,
     read_scope_file,
     write_scope_file,
+    get_all_files,
+    is_important_file,
 )
 
 def parse_args():

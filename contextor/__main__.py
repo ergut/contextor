@@ -5,7 +5,7 @@ Contextor - Generate project context files for AI assistants.
 This module provides the entry point for running Contextor as a module.
 """
 
-from contextor.main import main
+from contextor.cli import run_cli
 
 if __name__ == "__main__":
-    main()
+    run_cli()
