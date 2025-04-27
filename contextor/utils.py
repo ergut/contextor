@@ -1,5 +1,6 @@
 import os
 import subprocess
+import re
 
 DEFAULT_EXCLUSIONS = {
     '.git/',                  # Git metadata
@@ -103,3 +104,10 @@ def get_git_tracked_files(path):
     except (subprocess.SubprocessError, FileNotFoundError):
         # Git command failed or git not installed
         return set()
+    
+def estimate_tokens(text):
+    """Estimate the number of tokens in text using word-based approximation"""
+    # Split on whitespace and punctuation
+    words = re.findall(r'\w+|[^\w\s]', text)
+    # Use 0.75 as a conservative ratio (most GPT models average 0.75 tokens per word)
+    return int(len(words) / 0.75)

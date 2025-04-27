@@ -37,9 +37,11 @@ from contextor.signatures import process_file_signatures, get_signature_files, w
 from contextor.utils import (
     is_git_repo,
     get_git_tracked_files,
+    estimate_tokens,
 )
 from contextor.selection import get_all_files
 from contextor.tree import generate_tree
+from contextor.clipboard import copy_to_clipboard
 
 def print_usage_tips():
     """Print helpful tips on how to effectively use the context file with AI assistants"""
@@ -57,13 +59,6 @@ def print_usage_tips():
 3. Then ask your questions about the project
 -----------------------------------------------
 """)
-    
-def estimate_tokens(text):
-    """Estimate the number of tokens in text using word-based approximation"""
-    # Split on whitespace and punctuation
-    words = re.findall(r'\w+|[^\w\s]', text)
-    # Use 0.75 as a conservative ratio (most GPT models average 0.75 tokens per word)
-    return int(len(words) / 0.75)
 
 def write_conversation_header(outfile, project_path, total_tokens=None, has_signatures=False):
     """Write a header explaining how to use this file in conversations"""
@@ -350,24 +345,6 @@ def read_files_from_txt(file_path):
     except Exception as e:
         print(f"Error reading file list: {str(e)}")
         return []
-
-def copy_to_clipboard(file_path, max_mb=2):
-    """Copy the contents of a file to the system clipboard with size safeguards"""
-    size_mb = os.path.getsize(file_path) / (1024*1024)
-    if size_mb > max_mb:
-        ans = input(f'Context file is {size_mb:.1f} MB – copy anyway? [y/N] ').lower()
-        if ans not in ('y', 'yes'):
-            return False
-    try:
-        with open(file_path, 'r', encoding='utf-8') as fp:
-            pyperclip.copy(fp.read())
-        print('✅  Project scope copied to clipboard.')
-        return True
-    except pyperclip.PyperclipException as err:
-        # Typical on fresh Linux boxes without xclip/xsel
-        print(f'⚠️  Clipboard unavailable ({err}).\n'
-              'Install xclip or xsel and try again, or open the file manually.')
-        return False
 
 if __name__ == "__main__":
     # Inform users that this isn't the right way to run the tool anymore
