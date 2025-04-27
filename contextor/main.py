@@ -34,6 +34,19 @@ from datetime import datetime
 import re
 import pyperclip
 
+DEFAULT_EXCLUSIONS = {
+    '.git/',                  # Git metadata
+    'node_modules/',          # NPM dependencies 
+    '__pycache__/',           # Python cache
+    '*.pyc',                  # Python compiled files
+    '.idea/',                 # JetBrains IDE config
+    '.vscode/',               # VS Code config
+    'dist/',                  # Common build output
+    'build/',                 # Common build output 
+    'target/',                # Maven/other build output
+    '.DS_Store',              # macOS metadata
+}
+
 def estimate_tokens(text):
     """Estimate the number of tokens in text using word-based approximation"""
     # Split on whitespace and punctuation
@@ -93,17 +106,38 @@ def parse_patterns_file(patterns_file_path):
     return patterns
 
 def should_exclude(path, base_path, spec):
-    """Check if path should be excluded based on combined patterns"""
-    if spec is None:
-        return False
+    """Check if path should be excluded based on combined patterns and defaults"""
+    # First check against our hardcoded defaults
     try:
         rel_path = path.relative_to(base_path)
         rel_path_str = str(rel_path).replace(os.sep, '/')
         if path.is_dir():
             rel_path_str += '/'
-        return spec.match_file(rel_path_str)
+            
+        # Check against hardcoded exclusions first
+        for pattern in DEFAULT_EXCLUSIONS:
+            if pattern.endswith('/'):
+                # Directory match
+                if rel_path_str == pattern or rel_path_str.startswith(pattern):
+                    return True
+            elif '*' in pattern:
+                # Simple wildcard matching
+                pattern_parts = pattern.split('*')
+                if len(pattern_parts) == 2:
+                    if rel_path_str.startswith(pattern_parts[0]) and rel_path_str.endswith(pattern_parts[1]):
+                        return True
+            else:
+                # Exact file match
+                if rel_path_str == pattern:
+                    return True
+        
+        # Then check against the provided spec
+        if spec is not None:
+            return spec.match_file(rel_path_str)
     except ValueError:
-        return False
+        pass
+    
+    return False
 
 def format_name(path, is_last):
     """Format the name with proper tree symbols"""
