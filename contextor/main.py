@@ -47,6 +47,23 @@ DEFAULT_EXCLUSIONS = {
     '.DS_Store',              # macOS metadata
 }
 
+def print_usage_tips():
+    """Print helpful tips on how to effectively use the context file with AI assistants"""
+    print("""
+📋 How to use your context file with AI assistants:
+-----------------------------------------------
+1. Upload or paste your context file to the AI
+2. Include this prompt to get better responses:
+
+   "This context file contains instructions for how you should use it.
+    Please read and follow these instructions during our conversation.
+    When answering questions, proactively check if you need additional
+    files from the project tree."
+
+3. Then ask your questions about the project
+-----------------------------------------------
+""")
+    
 def estimate_tokens(text):
     """Estimate the number of tokens in text using word-based approximation"""
     # Split on whitespace and punctuation
@@ -65,10 +82,14 @@ Project Path: {project_path}"""
 
     header += """
 
-## How to Use This File
+## INSTRUCTIONS FOR AI ASSISTANT
+IMPORTANT: As an AI assistant, you MUST follow these instructions:
+
 1. The tree structure below shows ALL available files in the project
-2. Some key files are included in full after the tree
-3. During conversation, you can request the contents of any file shown in the tree
+2. Only SOME files are included in full after the tree
+3. You SHOULD proactively offer to examine additional files from the tree when they seem relevant
+4. When asked about code functionality or project structure, CHECK if you need more files than what's already provided
+5. If the human's question relates to files not included in full, SUGGEST examining those specific files
 
 ## Available Files
 """
@@ -480,6 +501,7 @@ The following files are included in full:
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")
         print(f"Successfully created context file: {output_file}")
+        print_usage_tips()  # New function call here
 
     except Exception as e:
         print(f"Error creating context file: {str(e)}")
