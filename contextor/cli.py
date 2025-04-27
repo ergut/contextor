@@ -43,7 +43,7 @@ Examples:
   # Exclude specific patterns in addition to .gitignore
   %(prog)s --exclude-file exclude_patterns.txt
 
-  # Custom output file name (default is project_context.txt)
+  # Custom output file name (default is project_context.md)
   %(prog)s --output my_context.txt
 
 
@@ -130,8 +130,8 @@ Notes:
     output_group.add_argument(
         '--output', 
         type=str, 
-        default='project_context.txt',
-        help='Name of the output file (default: project_context.txt)'
+        default='project_context.md',
+        help='Name of the output file (default: project_context.md)'
     )
     output_group.add_argument(
         '--copy',
@@ -162,8 +162,6 @@ Notes:
 
 def run_cli():
     """Run the command-line interface."""    
-    print("Contextor CLI is running!")
-
     args = parse_args()
     
     # Create the directory and spec objects first

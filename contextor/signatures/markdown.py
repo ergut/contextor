@@ -68,5 +68,5 @@ def format_markdown_toc(file_path: str, max_depth: int = 3) -> str:
     toc = extract_markdown_toc(file_path, max_depth)
     
     # Add header to the TOC
-    header = "# Table of Contents\n"
+    header = "Table of Contents:\n"
     return header + toc

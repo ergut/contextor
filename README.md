@@ -95,7 +95,7 @@ Need more control? We've got you covered:
 
 ```bash
 # Use a custom scope file
-contextor --scope-file my_project_scope.txt
+contextor --scope-file my_project_scope.md
 
 # Use previously selected files without interactive picker
 contextor --use-scope
