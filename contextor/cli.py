@@ -12,6 +12,8 @@ import pathspec
 from contextor.main import (
     parse_patterns_file,
     merge_files,
+)
+from contextor.selection import (
     run_interactive_picker,
     read_scope_file,
     write_scope_file,
