@@ -254,7 +254,7 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 """
 
-def run_interactive_picker(directory, spec):
+def run_interactive_picker(directory, spec, preselected_files=None):
     """Allow user to interactively select files to include in the context"""
     import questionary
     from questionary import Separator
@@ -263,8 +263,15 @@ def run_interactive_picker(directory, spec):
 
     all_files = get_all_files(directory, spec, smart_select=False)
     
-    # Create a list of important files for pre-selection
+    # Create a list of important files for highlighting
     important_files = [f for f in all_files if is_important_file(f)]
+    
+    # If we have preselected files, use those instead of important_files
+    # for determining what's checked by default
+    if preselected_files:
+        checked_files = preselected_files
+    else:
+        checked_files = important_files
     
     # Group files by directory for better organization
     file_groups = {}
@@ -287,10 +294,19 @@ def run_interactive_picker(directory, spec):
         # Add files in this directory
         for file_path in sorted(file_groups[group]):
             rel_path = os.path.relpath(file_path, directory)
+            
+            # Mark files as selected if in preselected_files or important
+            is_checked = file_path in checked_files
+            
+            # Add a ✨ indicator for smart-selected files
+            file_display = rel_path
+            if file_path in important_files and preselected_files:
+                file_display = f"{rel_path} ✨"  # Star indicator for smart files
+                
             choices.append(questionary.Choice(
-                rel_path,
+                file_display,
                 value=file_path,
-                checked=file_path in important_files
+                checked=is_checked
             ))
     
     try:
@@ -467,7 +483,89 @@ def read_files_from_txt(file_path):
     except Exception as e:
         print(f"Error reading file list: {str(e)}")
         return []
+
+def read_scope_file(scope_file_path, directory):
+    """Read file paths from a scope file.
     
+    Supports both absolute paths and paths relative to project directory.
+    Ignores comments and empty lines.
+    """
+    if not os.path.exists(scope_file_path):
+        return []
+        
+    try:
+        with open(scope_file_path, 'r', encoding='utf-8') as f:
+            result = []
+            for line in f:
+                # Skip empty lines and comments
+                stripped_line = line.strip()
+                if not stripped_line or stripped_line.startswith('#'):
+                    continue
+                    
+                # Remove bullet point if present and strip again
+                cleaned_line = stripped_line.lstrip('- ').strip()
+                if not cleaned_line:  # Skip if empty after cleaning
+                    continue
+                    
+                # Handle relative paths (convert to absolute)
+                if not os.path.isabs(cleaned_line):
+                    cleaned_line = os.path.join(directory, cleaned_line)
+                    
+                # Normalize path
+                normalized_path = os.path.normpath(cleaned_line)
+                
+                if os.path.exists(normalized_path):  # Only add if exists
+                    result.append(normalized_path)
+                else:
+                    print(f"Warning: File in scope not found - {cleaned_line}")
+                    
+            return result
+    except Exception as e:
+        print(f"Error reading scope file: {str(e)}")
+        return []
+
+def write_scope_file(scope_file_path, file_paths, directory):
+    """Write selected file paths to a scope file, using relative paths.
+    
+    Creates a nice, readable format with comments.
+    """
+    try:
+        with open(scope_file_path, 'w', encoding='utf-8') as f:
+            f.write("# Contextor Scope File\n")
+            f.write("# Contains files to include in context generation\n")
+            f.write("# Paths are relative to project root\n\n")
+            
+            # Group files by directory for better organization
+            file_groups = {}
+            for file_path in file_paths:
+                try:
+                    # Convert to relative path
+                    rel_path = os.path.relpath(file_path, directory)
+                    dir_name = os.path.dirname(rel_path) or '.'
+                    if dir_name not in file_groups:
+                        file_groups[dir_name] = []
+                    file_groups[dir_name].append(rel_path)
+                except ValueError:
+                    # If we can't get a relative path, use the absolute
+                    f.write(f"{file_path}\n")
+            
+            # Write grouped files with directory headers
+            for group in sorted(file_groups.keys()):
+                if group != '.':
+                    f.write(f"\n# {group}/\n")
+                else:
+                    f.write("\n# Root directory\n")
+                    
+                for rel_path in sorted(file_groups[group]):
+                    f.write(f"{rel_path}\n")
+                    
+        print(f"Scope file updated: {scope_file_path}")
+        return True
+    except Exception as e:
+        print(f"Error writing scope file: {str(e)}")
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Create a project context file for LLM conversations. By default, runs in interactive mode.',
@@ -503,22 +601,6 @@ Notes:
         nargs='+', 
         help='Space-separated list of files to include in full (e.g., --files main.py config.yaml)'
     )
-    file_group.add_argument(
-        '--files-list', 
-        type=str, 
-        help='Path to a text file containing list of files to include (one file per line)'
-    )
-    file_group.add_argument(
-        '--smart-select',
-        action='store_true',
-        help='Automatically select important files like entry points, configs, and docs'
-    )
-    # Add this to your argument group
-    file_group.add_argument(
-        '--interactive',
-        action='store_true',
-        help='Launch interactive file selector (this is the default if no files are specified)'
-    )
 
     context_group = parser.add_argument_group('context arguments')
     context_group.add_argument(
@@ -532,6 +614,23 @@ Notes:
         help='File containing supplementary information to add at the end'
     )
 
+    # Scope options (new primary way to select files)
+    scope_group = parser.add_argument_group('scope arguments')
+    scope_group.add_argument(
+        '--scope-file',
+        type=str,
+        help='Path to scope file containing list of files to include (default: .contextor_scope)'
+    )
+    scope_group.add_argument(
+        '--use-scope',
+        action='store_true',
+        help='Use scope file without interactive selection'
+    )
+    scope_group.add_argument(
+        '--no-update-scope',
+        action='store_true',
+        help='Do not update scope file after selection'
+    )
     
     # Output options
     output_group = parser.add_argument_group('output arguments')
@@ -588,18 +687,46 @@ Notes:
 
     spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
  
+    # Determine scope file path
+    scope_file = args.scope_file or '.contextor_scope'
+    scope_file_exists = os.path.exists(scope_file)
+
+    # Handle file selection based on options
     files_to_merge = None
-    if args.files_list:
-        files_to_merge = read_files_from_txt(args.files_list)
-    elif args.files:
+
+    if args.files:
+        # Explicitly specified files
         files_to_merge = args.files
-    elif args.smart_select:
-        # Only use smart selection if explicitly requested
-        print("\nUsing smart file selection (including only key files)...")
-        files_to_merge = get_all_files(directory, spec, smart_select=True)
+    elif args.use_scope and scope_file_exists:
+        # Non-interactive mode with scope file
+        print(f"\nUsing files from scope file: {scope_file}")
+        files_to_merge = read_scope_file(scope_file, directory)
+        if not files_to_merge:
+            print("Warning: No valid files found in scope file.")
+            return
+    elif args.use_scope and not scope_file_exists:
+        print(f"Error: Scope file not found: {scope_file}")
+        print("Run without --use-scope to create an interactive selection.")
+        return
     else:
-        # Default to interactive mode
-        files_to_merge = run_interactive_picker(directory, spec)
+        # Interactive mode - either use scope file contents for pre-selection
+        # or fall back to smart selection if no scope file
+        preselected_files = []
+        if scope_file_exists:
+            preselected_files = read_scope_file(scope_file, directory)
+            print(f"\nLoaded {len(preselected_files)} files from scope file for pre-selection.")
+        else:
+            # No scope file - pre-select smart files instead
+            all_files = get_all_files(directory, spec, smart_select=False)
+            preselected_files = [f for f in all_files if is_important_file(f)]
+            print(f"\nPreselected {len(preselected_files)} important files.")
+        
+        # Run interactive picker with preselection
+        files_to_merge = run_interactive_picker(directory, spec, preselected_files)
+        
+        # Update scope file unless told not to
+        if not args.no_update_scope:
+            write_scope_file(scope_file, files_to_merge, directory)
 
     merge_files(
         files_to_merge, 
@@ -608,7 +735,7 @@ Notes:
         not args.no_gitignore,  # We can keep this for consistency
         args.exclude_file,      # Same here
         args.estimate_tokens,
-        args.smart_select,
+        False, # Smart selection is handled in the interactive picker
         prefix_file=args.prefix_file,
         appendix_file=args.appendix_file,
         copy_to_clipboard_flag=args.copy,
