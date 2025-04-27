@@ -78,6 +78,17 @@ Contextor uses a scope file (default: `.contextor_scope`) to remember your file 
 
 This makes it easy to reuse the same selection across multiple runs, perfect for when you're iterating on your code and need to regenerate context frequently.
 
+## File Signatures 📋
+
+Contextor not only includes full file contents but also **extracts structure** from important files (like Python and Markdown) that you didn't fully include.
+
+This helps the AI assistant understand your project's architecture without needing every file!
+
+You can control this with:
+- `--no-signatures` (disable signatures)
+- `--max-signature-files N` (limit the number)
+- `--md-heading-depth N` (control Markdown TOC depth)
+
 ## Advanced Usage 🔧
 
 Need more control? We've got you covered:
