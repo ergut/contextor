@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Set
 # Import signature extractors
 from .python import process_python_file
 from .markdown import format_markdown_toc
+from .javascript import process_js_file
 
 from contextor.utils import (
     should_exclude, 
@@ -29,6 +30,10 @@ def is_markdown_file(file_path: str) -> bool:
     """Check if file is a Markdown file."""
     return file_path.lower().endswith(('.md', '.markdown'))
 
+def is_js_ts_file(file_path: str) -> bool:
+    """Check if file is a JavaScript or TypeScript file."""
+    return file_path.lower().endswith(('.js', '.jsx', '.ts', '.tsx'))
+
 def process_file_signatures(file_path: str, max_depth: int = 3) -> Optional[str]:
     """Process a file and extract signatures based on file type.
     
@@ -43,6 +48,8 @@ def process_file_signatures(file_path: str, max_depth: int = 3) -> Optional[str]
         return process_python_file(file_path)
     elif is_markdown_file(file_path):
         return format_markdown_toc(file_path, max_depth)
+    elif is_js_ts_file(file_path):
+        return process_js_file(file_path)
     else:
         # Not a supported file type
         return None
@@ -76,7 +83,7 @@ def get_signature_files(directory: str,
         git_tracked = get_git_tracked_files(directory)
     
     # Priority lists to sort files by importance
-    important_extensions = ['.py', '.md', '.js', '.ts', '.jsx', '.tsx']
+    important_extensions = ['.py', '.js', '.ts', '.jsx', '.tsx', '.md']
     
     for root, _, filenames in os.walk(directory):
         for filename in filenames:
@@ -100,7 +107,7 @@ def get_signature_files(directory: str,
                 continue
                 
             # Only include supported file types
-            if not (is_python_file(file_path) or is_markdown_file(file_path)):
+            if not (is_python_file(file_path) or is_markdown_file(file_path) or is_js_ts_file(file_path)):
                 continue
                 
             # Add to signature files
