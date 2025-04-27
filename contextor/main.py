@@ -35,7 +35,12 @@ import re
 import pyperclip
 
 from contextor.signatures import process_file_signatures, get_signature_files, write_signatures_section
-from contextor.utils import should_exclude, is_binary_file
+from contextor.utils import (
+    should_exclude, 
+    is_binary_file,
+    is_git_repo,
+    get_git_tracked_files,
+)
 
 def print_usage_tips():
     """Print helpful tips on how to effectively use the context file with AI assistants"""
@@ -116,12 +121,14 @@ def parse_patterns_file(patterns_file_path):
     return patterns
 
 
-def format_name(path, is_last):
-    """Format the name with proper tree symbols"""
+def format_name(path, is_last, is_git_tracked=False):
+    """Format the name with proper tree symbols and Git tracking indicator."""
     prefix = '└── ' if is_last else '├── '
-    return prefix + path.name + ('/' if path.is_dir() else '')
+    suffix = '/' if path.is_dir() else ''
+    git_marker = ' ✓' if is_git_tracked else ''
+    return prefix + path.name + suffix + git_marker
 
-def generate_tree(path, spec=None, prefix=''):
+def generate_tree(path, spec=None, prefix='', git_tracked_files=None):
     """Generate tree-like directory structure string with gitignore-style exclusions"""
     path = Path(path).resolve()
     if not path.exists():
@@ -144,16 +151,22 @@ def generate_tree(path, spec=None, prefix=''):
 
     for index, item in enumerate(items):
         is_last = index == len(items) - 1
+        
+        # Check if file is Git-tracked when git_tracked_files is provided
+        is_git_tracked = False
+        if git_tracked_files is not None:
+            abs_path = str(item.resolve())
+            is_git_tracked = abs_path in git_tracked_files
 
         if prefix:
-            entries.append(prefix + format_name(item, is_last))
+            entries.append(prefix + format_name(item, is_last, is_git_tracked))
         else:
-            entries.append(format_name(item, is_last))
+            entries.append(format_name(item, is_last, is_git_tracked))
 
         if item.is_dir():
             extension = '    ' if is_last else '│   '
             new_prefix = prefix + extension
-            entries.extend(generate_tree(item, spec, new_prefix))
+            entries.extend(generate_tree(item, spec, new_prefix, git_tracked_files))
 
     return entries
 
@@ -323,7 +336,9 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
                 smart_select=False, prefix_file=None, appendix_file=None, 
                 copy_to_clipboard_flag=False, include_signatures=True,
-                max_signature_files=None, md_heading_depth=3):
+                max_signature_files=None, md_heading_depth=3,
+                git_only_signatures=True, no_git_markers=False,               
+                ):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -363,7 +378,7 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         if include_signatures:
             # Get potential signature files but don't process them yet
             # (we'll process them only if token estimation is needed)
-            signature_files = get_signature_files(directory, file_paths, spec, max_signature_files)
+            signature_files = get_signature_files(directory, file_paths, spec, max_signature_files, git_only=git_only_signatures)
             
             if signature_files:
                 print(f"Found {len(signature_files)} files for signature extraction.")
@@ -374,7 +389,13 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         # First pass to collect all content if token estimation is needed
         # TODO: estime-tokens is no longer optional. Remove this logic from here.
         if estimate_tokens_flag:
-            tree_output = '\n'.join(generate_tree(Path(directory), spec))
+            # Inside merge_files function
+            git_tracked_files = None
+            if is_git_repo(directory):
+                git_tracked_files = get_git_tracked_files(directory)
+            # Generate tree output
+            tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
+
             full_content += tree_output + "\n\n"
             full_content += "## Included File Contents\nThe following files are included in full:\n\n"
             
@@ -464,7 +485,9 @@ The following files are included in full:
             # Add File Signatures section if enabled
             if include_signatures and signature_files:
                 write_signatures_section(outfile, directory, file_paths, spec, 
-                                       max_signature_files, md_heading_depth)
+                                    max_signature_files, md_heading_depth,
+                                    git_only=git_only_signatures)
+
 
             if appendix_file and os.path.exists(appendix_file):
                 outfile.write("\n# Appendix\n")

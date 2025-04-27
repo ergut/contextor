@@ -114,6 +114,16 @@ Notes:
         choices=range(1, 7),
         help='Maximum heading depth for Markdown TOC extraction (1-6, default: 3)'
     )
+    signature_group.add_argument(
+        '--all-signatures',
+        action='store_true',
+        help='Extract signatures from all Python/Markdown files, not just Git-tracked ones'
+    )
+    signature_group.add_argument(
+        '--no-git-markers',
+        action='store_true',
+        help='Disable Git tracking indicators in the directory tree'
+    )
 
     # Output options
     output_group = parser.add_argument_group('output arguments')
@@ -225,7 +235,9 @@ def run_cli():
         copy_to_clipboard_flag=args.copy,
         include_signatures=not args.no_signatures,
         max_signature_files=args.max_signature_files,
-        md_heading_depth=args.md_heading_depth
+        md_heading_depth=args.md_heading_depth,
+        git_only_signatures=not args.all_signatures,
+        no_git_markers=args.no_git_markers,
     )
 
 if __name__ == "__main__":

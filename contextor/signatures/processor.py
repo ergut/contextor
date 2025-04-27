@@ -14,7 +14,12 @@ from typing import Dict, List, Optional, Set
 from .python import process_python_file
 from .markdown import format_markdown_toc
 
-from contextor.utils import should_exclude, is_binary_file
+from contextor.utils import (
+    should_exclude, 
+    is_binary_file,
+    is_git_repo,
+    get_git_tracked_files,
+)
 
 def is_python_file(file_path: str) -> bool:
     """Check if file is a Python file."""
@@ -45,7 +50,9 @@ def process_file_signatures(file_path: str, max_depth: int = 3) -> Optional[str]
 def get_signature_files(directory: str, 
                         included_files: List[str], 
                         spec=None, 
-                        max_files: Optional[int] = None) -> List[str]:
+                        max_files: Optional[int] = None,
+                        git_only: bool = True,
+                        ) -> List[str]:
     """Get list of files for signature extraction.
     
     Args:
@@ -63,15 +70,23 @@ def get_signature_files(directory: str,
     
     signature_files = []
     
+        # Add Git tracking check
+    git_tracked = set()
+    if git_only and is_git_repo(directory):
+        git_tracked = get_git_tracked_files(directory)
+    
     # Priority lists to sort files by importance
     important_extensions = ['.py', '.md', '.js', '.ts', '.jsx', '.tsx']
     
-    # Keep track of processed files
     for root, _, filenames in os.walk(directory):
         for filename in filenames:
             file_path = os.path.join(root, filename)
             abs_path = os.path.abspath(file_path)
             
+            # Skip if not tracked by Git (when appropriate)
+            if git_only and is_git_repo(directory) and abs_path not in git_tracked:
+                continue
+
             # Skip if already included in full
             if abs_path in included_set:
                 continue
@@ -108,7 +123,8 @@ def get_signature_files(directory: str,
     return signature_files
 
 def write_signatures_section(outfile, directory, included_files, spec=None, 
-                            max_files=None, md_depth=3):
+                            max_files=None, md_depth=3, git_only=True):
+
     """Write the File Signatures section to the output file.
     
     Args:
@@ -119,7 +135,7 @@ def write_signatures_section(outfile, directory, included_files, spec=None,
         max_files: Maximum number of signature files to include 
         md_depth: Maximum depth for Markdown headings
     """
-    signature_files = get_signature_files(directory, included_files, spec, max_files)
+    signature_files = get_signature_files(directory, included_files, spec, max_files, git_only=git_only)
     
     if not signature_files:
         return

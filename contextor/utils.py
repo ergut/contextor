@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 DEFAULT_EXCLUSIONS = {
     '.git/',                  # Git metadata
@@ -68,3 +69,22 @@ def is_binary_file(file_path):
             return b'\0' in chunk  # Null bytes typically indicate binary content
     except (IOError, PermissionError):
         return True  # If we can't read it, best to assume it's binary
+
+def is_git_repo(path):
+    """Check if directory is a Git repository."""
+    return os.path.isdir(os.path.join(path, '.git'))
+
+def get_git_tracked_files(path):
+    """Get set of Git-tracked files in repository."""
+    try:
+        result = subprocess.run(
+            ['git', 'ls-files', '--full-name'], 
+            cwd=path, 
+            stdout=subprocess.PIPE, 
+            text=True,
+            check=True
+        )
+        return set(os.path.join(path, f) for f in result.stdout.splitlines())
+    except (subprocess.SubprocessError, FileNotFoundError):
+        # Git command failed or git not installed
+        return set()
