@@ -9,19 +9,17 @@ Features:
 - Merge multiple files with custom headers
 - Generate tree structure of directories
 - Support for .gitignore patterns and additional exclude patterns
-- Custom prefix text support
-- Multiple input methods (direct file list or file containing paths)
+- Multiple input methods (direct file list or interactive selection)
 - Automatic inclusion of all files when no specific files are provided
 - Smart selection of important files
 - Clear listing of included files
 
-Usage: TODO: Usage has changed. Update this section.
-    python script.py --files file1.txt file2.txt --output merged.txt
-    python script.py --files-list files.txt --prefix "My Project Files"
-    python script.py --prefix-file prefix.txt --directory ./project --no-gitignore
-    python script.py --exclude-file exclude.txt
-    python script.py --directory ./project  # Will include all files
-    python script.py --smart-select  # Will include only important files
+Usage:
+    contextor  # Interactive mode (default)
+    contextor --files file1.txt file2.txt --output merged.txt
+    contextor --use-scope  # Use previously selected files
+    contextor --exclude-file exclude.txt
+    contextor --directory ./project  # Include all files
 
 Author: Salih Ergüt
 """
@@ -144,7 +142,6 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None,
-                prefix_file=None, appendix_file=None, 
                 copy_to_clipboard_flag=False, include_signatures=True,
                 max_signature_files=None, md_heading_depth=3,
                 git_only_signatures=True, no_git_markers=False,               
@@ -166,12 +163,9 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns) if patterns else None
 
         if file_paths is None:
-            if smart_select:
-                print("\nUsing smart file selection (including only key files)...")
-            else:
-                print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
+            print("\nNo files specified. This will include all files in the directory (respecting .gitignore).")
             
-            all_files = get_all_files(directory, spec, smart_select)
+            all_files = get_all_files(directory, spec)
             total_size = calculate_total_size(all_files)
             total_size_mb = total_size / (1024 * 1024)
             
@@ -242,14 +236,7 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
 
         # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
-
-            # Write prefix if provided
-            if prefix_file and os.path.exists(prefix_file):
-                with open(prefix_file, 'r', encoding='utf-8') as pf:
-                    outfile.write(pf.read())
-                    outfile.write("\n\n")
-
-            # Use the updated conversation header
+            # Write the conversation header
             write_conversation_header(outfile, directory, total_tokens, 
                                     has_signatures=include_signatures and bool(signature_files))
             
@@ -289,12 +276,6 @@ The following files are included in full:
                 write_signatures_section(outfile, directory, file_paths, spec, 
                                     max_signature_files, md_heading_depth,
                                     git_only=git_only_signatures)
-
-
-            if appendix_file and os.path.exists(appendix_file):
-                outfile.write("\n# Appendix\n")
-                with open(appendix_file, 'r') as af:
-                    outfile.write(af.read())
 
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")

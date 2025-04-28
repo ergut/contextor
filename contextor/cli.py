@@ -22,10 +22,20 @@ from contextor.selection import (
 )
 
 def parse_args():
-    """Parse command-line arguments."""
+    """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description='Create a project context file for LLM conversations. By default, runs in interactive mode.',
+        description="""
+Create a context file from your codebase that's perfect for AI conversations.
 
+Features:
+  - Interactive file selection (default)
+  - Tree view of project structure
+  - File signature extraction
+  - .gitignore support
+  - Clipboard integration
+  - Smart file selection
+  - Scope file for reuse
+""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -67,19 +77,7 @@ Notes:
         nargs='+', 
         help='Space-separated list of files to include in full (e.g., --files main.py config.yaml)'
     )
-
-    context_group = parser.add_argument_group('context arguments')
-    context_group.add_argument(
-        '--prefix-file',
-        type=str,
-        help='File containing essential context to add at the start'
-    )
-    context_group.add_argument(
-        '--appendix-file',
-        type=str,
-        help='File containing supplementary information to add at the end'
-    )
-
+    
     # Scope options (new primary way to select files)
     scope_group = parser.add_argument_group('scope arguments')
     scope_group.add_argument(
@@ -145,21 +143,22 @@ Notes:
 
 
     # Directory and exclusion options
-    dir_group = parser.add_argument_group('directory and exclusion arguments')
-    dir_group.add_argument(
-        '--directory', 
-        type=str, 
-        help='Root directory to analyze (default: current directory)'
+    directory_group = parser.add_argument_group('directory and exclusion arguments')
+    directory_group.add_argument(
+        '--directory',
+        type=str,
+        default='.',
+        help='Project directory (default: current directory)'
     )
-    dir_group.add_argument(
-        '--no-gitignore', 
+    directory_group.add_argument(
+        '--no-gitignore',
         action='store_true',
-        help='Ignore .gitignore patterns when scanning directory'
+        help='Do not use .gitignore patterns'
     )
-    dir_group.add_argument(
-        '--exclude-file', 
-        type=str, 
-        help='Path to a file containing additional exclude patterns (uses .gitignore syntax)'
+    directory_group.add_argument(
+        '--exclude-file',
+        type=str,
+        help='File containing additional patterns to exclude'
     )
 
     return parser.parse_args()
@@ -228,10 +227,8 @@ def run_cli():
         files_to_merge, 
         args.output, 
         args.directory, 
-        not args.no_gitignore,  # TODO: We can keep this for consistency but remove it later
-        args.exclude_file,      # TODO: We can keep this for consistency but remove it later
-        prefix_file=args.prefix_file,
-        appendix_file=args.appendix_file,
+        not args.no_gitignore,
+        args.exclude_file,
         copy_to_clipboard_flag=args.copy,
         include_signatures=not args.no_signatures,
         max_signature_files=args.max_signature_files,

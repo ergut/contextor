@@ -94,11 +94,8 @@ You can control this with:
 Need more control? We've got you covered:
 
 ```bash
-# Use a custom scope file
-contextor --scope-file my_project_scope.md
-
-# Use previously selected files without interactive picker
-contextor --use-scope
+# Include files listed in a text file
+contextor --files-list important_files.txt
 
 # Custom exclude patterns
 contextor --exclude-file exclude_patterns.txt
