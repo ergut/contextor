@@ -230,7 +230,6 @@ def run_cli():
         args.directory, 
         not args.no_gitignore,  # TODO: We can keep this for consistency but remove it later
         args.exclude_file,      # TODO: We can keep this for consistency but remove it later
-        False, # TODO: Remove it later as smart selection is handled in the interactive picker
         prefix_file=args.prefix_file,
         appendix_file=args.appendix_file,
         copy_to_clipboard_flag=args.copy,

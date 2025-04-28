@@ -144,7 +144,7 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None,
-                smart_select=False, prefix_file=None, appendix_file=None, 
+                prefix_file=None, appendix_file=None, 
                 copy_to_clipboard_flag=False, include_signatures=True,
                 max_signature_files=None, md_heading_depth=3,
                 git_only_signatures=True, no_git_markers=False,               
