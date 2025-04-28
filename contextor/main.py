@@ -143,7 +143,7 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 """ 
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
-                use_gitignore=True, exclude_file=None, estimate_tokens_flag=False,
+                use_gitignore=True, exclude_file=None,
                 smart_select=False, prefix_file=None, appendix_file=None, 
                 copy_to_clipboard_flag=False, include_signatures=True,
                 max_signature_files=None, md_heading_depth=3,
@@ -193,57 +193,52 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         # Initialize content for token estimation
         full_content = ""
         
-        # First pass to collect all content if token estimation is needed
-        # TODO: estime-tokens is no longer optional. Remove this logic from here.
-        if estimate_tokens_flag:
-            # Inside merge_files function
-            git_tracked_files = None
-            if is_git_repo(directory):
-                git_tracked_files = get_git_tracked_files(directory)
-            # Generate tree output
-            tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
+        # Collect all content for token estimation
+        git_tracked_files = None
+        if is_git_repo(directory):
+            git_tracked_files = get_git_tracked_files(directory)
+        # Generate tree output
+        tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
 
-            full_content += tree_output + "\n\n"
-            full_content += "## Included File Contents\nThe following files are included in full:\n\n"
-            
-            for file_path in file_paths:
-                if file_path.strip().startswith('#'):
+        full_content += tree_output + "\n\n"
+        full_content += "## Included File Contents\nThe following files are included in full:\n\n"
+        
+        for file_path in file_paths:
+            if file_path.strip().startswith('#'):
+                continue
+
+            if not os.path.exists(file_path):
+                continue
+
+            try:
+                if os.path.getsize(file_path) > 10 * 1024 * 1024:
                     continue
 
-                if not os.path.exists(file_path):
-                    continue
-
-                try:
-                    if os.path.getsize(file_path) > 10 * 1024 * 1024:
-                        continue
-
-                    full_content += add_file_header(file_path)
-                    with open(file_path, 'r', encoding='utf-8') as infile:
-                        full_content += infile.read()
-                    full_content += '\n\n'
-                except Exception as e:
-                    print(f"Error reading file {file_path}: {str(e)}")
+                full_content += add_file_header(file_path)
+                with open(file_path, 'r', encoding='utf-8') as infile:
+                    full_content += infile.read()
+                full_content += '\n\n'
+            except Exception as e:
+                print(f"Error reading file {file_path}: {str(e)}")
+        
+        # Add signatures content for token estimation if enabled
+        if include_signatures and signature_files:
+            signatures_content = "\n## File Signatures\n"
+            signatures_content += "The following files are not included in full, but their structure is provided:\n\n"
             
-            # Add signatures content for token estimation if enabled
-            if include_signatures and signature_files:
-                signatures_content = "\n## File Signatures\n"
-                signatures_content += "The following files are not included in full, but their structure is provided:\n\n"
-                
-                for file_path in signature_files:
-                    rel_path = os.path.relpath(file_path, directory)
-                    signatures_content += f"\n### {rel_path}\n```\n"
-                    sig = process_file_signatures(file_path, md_heading_depth)
-                    if sig:
-                        signatures_content += sig
-                    else:
-                        signatures_content += "File type not supported for signature extraction."
-                    signatures_content += "\n```\n"
-                
-                full_content += signatures_content
+            for file_path in signature_files:
+                rel_path = os.path.relpath(file_path, directory)
+                signatures_content += f"\n### {rel_path}\n```\n"
+                sig = process_file_signatures(file_path, md_heading_depth)
+                if sig:
+                    signatures_content += sig
+                else:
+                    signatures_content += "File type not supported for signature extraction."
+                signatures_content += "\n```\n"
             
-            total_tokens = estimate_tokens(full_content)
-        else:
-            total_tokens = None
+            full_content += signatures_content
+        
+        total_tokens = estimate_tokens(full_content)
 
         # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
