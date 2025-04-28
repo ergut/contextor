@@ -142,7 +142,20 @@ def write_signatures_section(outfile, directory, included_files, spec=None,
         max_files: Maximum number of signature files to include 
         md_depth: Maximum depth for Markdown headings
     """
-    signature_files = get_signature_files(directory, included_files, spec, max_files, git_only=git_only)
+    # Get all potential signature files first
+    all_signature_files = get_signature_files(directory, included_files, spec, 
+                                             max_files=None, git_only=git_only)
+    
+    total_available = len(all_signature_files)
+    
+    # Apply limit if specified
+    if max_files is not None and max_files >= 0 and total_available > max_files:
+        signature_files = all_signature_files[:max_files]
+        print(f"Note: Found {total_available} files for signature extraction, but only including {max_files} due to max-signature-files limit.")
+        print(f"      Use --max-signature-files option to include more signatures if needed.")
+    else:
+        signature_files = all_signature_files
+        print(f"Found {len(signature_files)} files for signature extraction.")
     
     if not signature_files:
         return

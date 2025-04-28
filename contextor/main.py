@@ -190,9 +190,6 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             # (we'll process them only if token estimation is needed)
             signature_files = get_signature_files(directory, file_paths, spec, max_signature_files, git_only=git_only_signatures)
             
-            if signature_files:
-                print(f"Found {len(signature_files)} files for signature extraction.")
-
         # Initialize content for token estimation
         full_content = ""
         

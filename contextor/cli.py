@@ -108,7 +108,7 @@ Notes:
     signature_group.add_argument(
         '--max-signature-files',
         type=int,
-        default=None,
+        default=20,
         help='Maximum number of files to include in signatures section (default: unlimited)'
     )
     signature_group.add_argument(
