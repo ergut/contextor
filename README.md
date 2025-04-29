@@ -80,7 +80,7 @@ This makes it easy to reuse the same selection across multiple runs, perfect for
 
 ## File Signatures 📋
 
-Contextor not only includes full file contents but also **extracts structure** from important files (like Python and Markdown) that you didn't fully include.
+Contextor not only includes full file contents but also **extracts structure** from important files (like Python, JavaScript, SQL, and Markdown) that you didn't fully include.
 
 This helps the AI assistant understand your project's architecture without needing every file!
 
