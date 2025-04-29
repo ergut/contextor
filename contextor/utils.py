@@ -100,7 +100,9 @@ def get_git_tracked_files(path):
             text=True,
             check=True
         )
-        return set(os.path.join(path, f) for f in result.stdout.splitlines())
+        # Convert all paths to normalized absolute paths
+        return set(os.path.normpath(os.path.abspath(os.path.join(path, f))) 
+                  for f in result.stdout.splitlines())
     except (subprocess.SubprocessError, FileNotFoundError):
         # Git command failed or git not installed
         return set()

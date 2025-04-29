@@ -2,26 +2,7 @@
 File Merger with Tree Structure and Token Estimation
 
 A Python script that merges multiple files into a single output file while including
-a tree-like directory structure at the beginning. The script supports .gitignore patterns
-and additional exclude patterns for excluding files and directories from the tree output.
-
-Features:
-- Merge multiple files with custom headers
-- Generate tree structure of directories
-- Support for .gitignore patterns and additional exclude patterns
-- Multiple input methods (direct file list or interactive selection)
-- Automatic inclusion of all files when no specific files are provided
-- Smart selection of important files
-- Clear listing of included files
-
-Usage:
-    contextor  # Interactive mode (default)
-    contextor --files file1.txt file2.txt --output merged.txt
-    contextor --use-scope  # Use previously selected files
-    contextor --exclude-file exclude.txt
-    contextor --directory ./project  # Include all files
-
-Author: Salih Ergüt
+a tree-like directory structure at the beginning.
 """
 
 import os, sys
@@ -31,7 +12,7 @@ from datetime import datetime
 import re
 import pyperclip
 
-from contextor.signatures import process_file_signatures, get_signature_files, write_signatures_section
+from contextor.signatures import process_file_signatures, get_signature_files, generate_signatures_section
 from contextor.utils import (
     is_git_repo,
     get_git_tracked_files,
@@ -176,32 +157,20 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             file_paths = all_files
             print(f"Including {len(file_paths)} files from directory...")
 
-        # Prepare for signature extraction if enabled
-        signature_files = []
-        signatures_content = ""
-        if include_signatures:
-            # Get potential signature files but don't process them yet
-            # (we'll process them only if token estimation is needed)
-            signature_files = get_signature_files(directory, file_paths, spec, max_signature_files, git_only=git_only_signatures)
-            
         # Initialize content for token estimation
         full_content = ""
-        
-        # Collect all content for token estimation
+
+        # Generate tree output
         git_tracked_files = None
         if is_git_repo(directory):
             git_tracked_files = get_git_tracked_files(directory)
-        # Generate tree output
         tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
-
         full_content += tree_output + "\n\n"
+
+        # Add file contents
         full_content += "## Included File Contents\nThe following files are included in full:\n\n"
-        
         for file_path in file_paths:
             if file_path.strip().startswith('#'):
-                continue
-
-            if not os.path.exists(file_path):
                 continue
 
             try:
@@ -215,41 +184,36 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
             except Exception as e:
                 print(f"Error reading file {file_path}: {str(e)}")
         
-        # Add signatures content for token estimation if enabled
-        if include_signatures and signature_files:
-            signatures_content = "\n## File Signatures\n"
-            signatures_content += "The following files are not included in full, but their structure is provided:\n\n"
-            
-            for file_path in signature_files:
-                rel_path = os.path.relpath(file_path, directory)
-                signatures_content += f"\n### {rel_path}\n```\n"
-                sig = process_file_signatures(file_path, md_heading_depth)
-                if sig:
-                    signatures_content += sig
-                else:
-                    signatures_content += "File type not supported for signature extraction."
-                signatures_content += "\n```\n"
-            
+        # Generate signatures section if enabled
+        signatures_content = ""
+        has_signatures = False
+        if include_signatures:
+            signatures_content, has_signatures = generate_signatures_section(
+                directory,
+                file_paths,
+                spec,
+                max_signature_files,
+                md_heading_depth,
+                git_only_signatures
+            )
             full_content += signatures_content
-        
+
         total_tokens = estimate_tokens(full_content)
 
         # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
             # Write the conversation header
-            write_conversation_header(outfile, directory, total_tokens, 
-                                    has_signatures=include_signatures and bool(signature_files))
+            write_conversation_header(outfile, directory, total_tokens, has_signatures)
             
+            # Write the tree structure
             tree_output = '\n'.join(generate_tree(Path(directory), spec, '', git_tracked_files))
             outfile.write(f"\n{tree_output}\n\n")
             
             # Add section listing included files
             write_included_files_section(outfile, file_paths, directory)
             
-            outfile.write("""## Included File Contents
-The following files are included in full:
-
-""")
+            # Write file contents
+            outfile.write("## Included File Contents\nThe following files are included in full:\n\n")
 
             for file_path in file_paths:
                 if file_path.strip().startswith('#'):
@@ -271,11 +235,9 @@ The following files are included in full:
                 except Exception as e:
                     print(f"Error reading file {file_path}: {str(e)}")
             
-            # Add File Signatures section if enabled
-            if include_signatures and signature_files:
-                write_signatures_section(outfile, directory, file_paths, spec, 
-                                    max_signature_files, md_heading_depth,
-                                    git_only=git_only_signatures)
+            # Write signatures section
+            if signatures_content:
+                outfile.write(signatures_content)
 
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")

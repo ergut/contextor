@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Set
 from .python import process_python_file
 from .markdown import format_markdown_toc
 from .javascript import process_js_file
+from .sql import process_sql_file
 
 from contextor.utils import (
     should_exclude, 
@@ -34,6 +35,10 @@ def is_js_ts_file(file_path: str) -> bool:
     """Check if file is a JavaScript or TypeScript file."""
     return file_path.lower().endswith(('.js', '.jsx', '.ts', '.tsx'))
 
+def is_sql_file(file_path: str) -> bool:
+    """Check if file is a SQL file."""
+    return file_path.lower().endswith('.sql')
+
 def process_file_signatures(file_path: str, max_depth: int = 3) -> Optional[str]:
     """Process a file and extract signatures based on file type.
     
@@ -50,6 +55,8 @@ def process_file_signatures(file_path: str, max_depth: int = 3) -> Optional[str]
         return format_markdown_toc(file_path, max_depth)
     elif is_js_ts_file(file_path):
         return process_js_file(file_path)
+    elif is_sql_file(file_path):
+        return process_sql_file(file_path)
     else:
         # Not a supported file type
         return None
@@ -67,47 +74,50 @@ def get_signature_files(directory: str,
         included_files: List of files already included in full
         spec: gitignore spec for exclusions
         max_files: Maximum number of files to include (None for unlimited)
+        git_only: Whether to only include Git-tracked files
         
     Returns:
         List of file paths for signature extraction
     """
-    
     # Convert included_files to a set for O(1) lookups
     included_set = set(os.path.abspath(f) for f in included_files)
     
     signature_files = []
     
-        # Add Git tracking check
+    # Add Git tracking check
     git_tracked = set()
     if git_only and is_git_repo(directory):
         git_tracked = get_git_tracked_files(directory)
     
     # Priority lists to sort files by importance
-    important_extensions = ['.py', '.js', '.ts', '.jsx', '.tsx', '.md']
+    important_extensions = ['.py', '.js', '.ts', '.jsx', '.tsx', '.md', '.sql']
     
     for root, _, filenames in os.walk(directory):
         for filename in filenames:
             file_path = os.path.join(root, filename)
             abs_path = os.path.abspath(file_path)
             
-            # Skip if not tracked by Git (when appropriate)
-            if git_only and is_git_repo(directory) and abs_path not in git_tracked:
-                continue
-
-            # Skip if already included in full
+            # Skip if already included in full (this check must come first)
             if abs_path in included_set:
                 continue
-                
+
             # Skip if excluded by gitignore patterns
             if should_exclude(Path(file_path), directory, spec):
                 continue
 
-            # Skip binary files
+            # Skip binary files 
             if is_binary_file(file_path):
                 continue
+
+            # Skip if not git-tracked (using relative path for comparison)
+            if git_only and is_git_repo(directory):
+                rel_path = os.path.relpath(file_path, directory)
+                if rel_path not in git_tracked:
+                    continue
                 
             # Only include supported file types
-            if not (is_python_file(file_path) or is_markdown_file(file_path) or is_js_ts_file(file_path)):
+            if not (is_python_file(file_path) or is_markdown_file(file_path) 
+                   or is_js_ts_file(file_path) or is_sql_file(file_path)):
                 continue
                 
             # Add to signature files
@@ -123,61 +133,63 @@ def get_signature_files(directory: str,
     
     signature_files.sort(key=get_priority)
     
-    # Limit the number of files if specified
-    if max_files is not None and max_files >= 0:
+    # Apply limit if specified and git_only is True (don't limit when --all-signatures is used)
+    if max_files is not None and max_files >= 0 and git_only:
+        total_available = len(signature_files)
         signature_files = signature_files[:max_files]
-        
+        if total_available > max_files:
+            print(f"Note: Found {total_available} files for signature extraction, but only including {max_files} due to max-signature-files limit.")
+            print(f"      Use --max-signature-files option to include more signatures if needed.")
+        else:
+            print(f"Found {len(signature_files)} files for signature extraction.")
+    else:
+        print(f"Found {len(signature_files)} files for signature extraction.")
+    
     return signature_files
 
-def write_signatures_section(outfile, directory, included_files, spec=None, 
-                            max_files=None, md_depth=3, git_only=True):
-
-    """Write the File Signatures section to the output file.
+def generate_signatures_section(directory: str,
+                              included_files: List[str],
+                              spec=None,
+                              max_files: Optional[int] = None,
+                              md_depth: int = 3,
+                              git_only: bool = True) -> tuple[str, bool]:
+    """Generate the File Signatures section content.
     
     Args:
-        outfile: Output file handle
         directory: Project directory
         included_files: List of files already included in full
         spec: gitignore spec object
         max_files: Maximum number of signature files to include 
         md_depth: Maximum depth for Markdown headings
+        git_only: Whether to only include Git-tracked files
+        
+    Returns:
+        Tuple of (signature content string, whether signatures were generated)
     """
-    # Get all potential signature files first
-    all_signature_files = get_signature_files(directory, included_files, spec, 
-                                             max_files=None, git_only=git_only)
-    
-    total_available = len(all_signature_files)
-    
-    # Apply limit if specified
-    if max_files is not None and max_files >= 0 and total_available > max_files:
-        signature_files = all_signature_files[:max_files]
-        print(f"Note: Found {total_available} files for signature extraction, but only including {max_files} due to max-signature-files limit.")
-        print(f"      Use --max-signature-files option to include more signatures if needed.")
-    else:
-        signature_files = all_signature_files
-        print(f"Found {len(signature_files)} files for signature extraction.")
+    signature_files = get_signature_files(directory, included_files, spec, max_files, git_only)
     
     if not signature_files:
-        return
+        return "", False
         
-    outfile.write("""
-## File Signatures
-The following files are not included in full, but their structure is provided:
-
-""")
+    content = [
+        "\n## File Signatures",
+        "The following files are not included in full, but their structure is provided:",
+        ""
+    ]
     
     for file_path in signature_files:
         rel_path = os.path.relpath(file_path, directory)
-        
-        outfile.write(f"""
-### {rel_path}
-```
-""")
+        content.extend([
+            f"\n### {rel_path}",
+            "```"
+        ])
         
         signatures = process_file_signatures(file_path, md_depth)
         if signatures:
-            outfile.write(signatures)
+            content.append(signatures)
         else:
-            outfile.write("File type not supported for signature extraction.")
+            content.append("File type not supported for signature extraction.")
             
-        outfile.write("```\n")
+        content.append("```\n")
+    
+    return "\n".join(content), True
