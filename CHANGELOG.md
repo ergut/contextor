@@ -1,7 +1,16 @@
 # Changelog
 
-## [Unreleased]
-### Removed
+## [1.4.0] - 2025-04-29
+
+### Added
+
+- Added SQL file support for signature extraction
+- Added better error handling for signature processing
+
+### Fixed
+
+- Fixed Git tracked files path normalization issue that prevented proper detection
+- Fixed signature section generation to be more maintainable
 - Removed prefix_file and appendix_file options for simpler interface
 - Removed related documentation and example usage
 
