@@ -33,7 +33,11 @@ def print_usage_tips():
    "This context file contains instructions for how you should use it.
     Please read and follow these instructions during our conversation.
     When answering questions, proactively check if you need additional
-    files from the project tree."
+    files from the project tree.
+    
+    If you need additional files, please suggest a specific command like:
+    `contextor --no-signatures --files file1.py file2.py --copy`
+    I can run this locally and paste the results."
 
 3. Then ask your questions about the project
 -----------------------------------------------
