@@ -8,6 +8,7 @@ the configuration for the main Contextor functionality.
 import argparse
 import os
 import pathspec
+import sys
 
 from contextor.main import (
     parse_patterns_file,
@@ -21,8 +22,12 @@ from contextor.selection import (
     is_important_file,
 )
 
-def parse_args():
+def parse_args(args=None):
     """Parse command line arguments"""
+    # Use args if provided, otherwise use sys.argv[1:]
+    if args is None:
+        args = sys.argv[1:]
+
     parser = argparse.ArgumentParser(
         description="""
 Create a context file from your codebase that's perfect for AI conversations.
@@ -165,7 +170,7 @@ Notes:
         help='File containing additional patterns to exclude'
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 def run_cli():
     """Run the command-line interface."""    
