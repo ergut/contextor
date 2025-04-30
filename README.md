@@ -43,7 +43,7 @@ contextor --use-scope
 
 # Specify files directly (skips interactive picker)
 contextor --files main.py config.yaml
-
+```
 ## Why Contextor? 🎯
 
 - **Simple**: One command to create perfect context for AI conversations
