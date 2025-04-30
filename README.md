@@ -9,7 +9,7 @@ Ever needed to explain your codebase to ChatGPT or Claude? Contextor creates a p
 contextor
 ```
 📋 **What is Contextor?**
-> Contextor is **not** an IDE or code editor like Cursor. It's a zero-friction tool that makes your codebase instantly pasteable into ChatGPT, Claude, or any AI assistant. Think of it as a "make my repo AI-ready" button that creates a single file with your project structure and selected file contents.
+> Contextor is **not** an IDE or code editor like Cursor. It's a zero-friction tool that makes your codebase instantly pasteable into ChatGPT, Claude, or any AI assistant. Think of it as a "make my repo AI-ready" button that creates a single file with your project structure and selected file contents, ready for pasting.
 
 ## What You Get ✨
 
@@ -44,9 +44,6 @@ contextor --use-scope
 # Specify files directly (skips interactive picker)
 contextor --files main.py config.yaml
 
-# Copy result directly to clipboard
-contextor --copy
-
 ## Why Contextor? 🎯
 
 - **Simple**: One command to create perfect context for AI conversations
@@ -55,6 +52,7 @@ contextor --copy
 - **Flexible**: Include specific files or let the AI see everything
 - **Safe**: Warns you about size and skips files >10MB
 - **Binary-aware**: Automatically excludes binary files that wouldn't help AI assistants
+- **Ready to Use**: Automatically copies output to clipboard and saves to file
 
 ## Features in Detail 🛠️
 
@@ -116,8 +114,7 @@ contextor --files main.py config.yaml --copy
 | `--scope-file` | Custom scope file path (default: .contextor_scope) |
 | `--use-scope` | Use scope file without interactive selection |
 | `--no-update-scope` | Don't update scope file after selection |
-| `--output` | Output filename (default: project_context.txt) |
-| `--copy` | Copy the generated context to system clipboard |
+| `--output` | Output filename (default: project_context.md) |
 | `--no-gitignore` | Disable .gitignore patterns |
 | `--exclude-file` | Additional exclude patterns file |
 

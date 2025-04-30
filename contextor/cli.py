@@ -58,7 +58,16 @@ Examples:
   %(prog)s --exclude-file exclude_patterns.txt
 
   # Custom output file name (default is project_context.md)
-  %(prog)s --output my_context.txt
+  %(prog)s --output my_context.md
+    
+  # Disable file signature extraction
+  %(prog)s --no-signatures
+  
+  # Limit the number of files included in the signatures section
+  %(prog)s --max-signature-files 10
+
+  # Set maximum heading depth for Markdown TOC extraction
+  %(prog)s --md-heading-depth 2
 
 
 Notes:
@@ -134,11 +143,6 @@ Notes:
         type=str, 
         default='project_context.md',
         help='Name of the output file (default: project_context.md)'
-    )
-    output_group.add_argument(
-        '--copy',
-        action='store_true',
-        help='Copy the generated context file to the system clipboard'
     )
 
 
@@ -229,7 +233,6 @@ def run_cli():
         args.directory, 
         not args.no_gitignore,
         args.exclude_file,
-        copy_to_clipboard_flag=args.copy,
         include_signatures=not args.no_signatures,
         max_signature_files=args.max_signature_files,
         md_heading_depth=args.md_heading_depth,

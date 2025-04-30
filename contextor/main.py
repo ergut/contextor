@@ -36,7 +36,7 @@ def print_usage_tips():
     files from the project tree.
     
     If you need additional files, please suggest a specific command like:
-    `contextor --no-signatures --files file1.py file2.py --copy`
+    `contextor --no-signatures --files file1.py file2.py`
     I can run this locally and paste the results."
 
 3. Then ask your questions about the project
@@ -127,10 +127,9 @@ Last modified: {datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y
 
 def merge_files(file_paths, output_file='merged_file.txt', directory=None, 
                 use_gitignore=True, exclude_file=None,
-                copy_to_clipboard_flag=False, include_signatures=True,
-                max_signature_files=None, md_heading_depth=3,
-                git_only_signatures=True, no_git_markers=False,               
-                ):
+                include_signatures=True, max_signature_files=None, 
+                md_heading_depth=3, git_only_signatures=True, 
+                no_git_markers=False):
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -246,14 +245,14 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         if total_tokens:
             print(f"\nEstimated token count: {total_tokens:,}")
         print(f"Successfully created context file: {output_file}")
+
+        # Always copy to clipboard by default
+        copy_to_clipboard(output_file)
         print_usage_tips()
 
     except Exception as e:
         print(f"Error creating context file: {str(e)}")
     
-    if copy_to_clipboard_flag:
-        copy_to_clipboard(output_file)
-
 def read_files_from_txt(file_path):
     """Read list of files from a text file.
     
