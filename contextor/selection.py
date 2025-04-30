@@ -97,6 +97,10 @@ def read_scope_file(scope_file_path, directory):
                 if not cleaned_line:  # Skip if empty after cleaning
                     continue
                     
+                # Remove inline comments
+                if '#' in cleaned_line:
+                    cleaned_line = cleaned_line.split('#')[0].strip()
+                
                 # Handle relative paths (convert to absolute)
                 if not os.path.isabs(cleaned_line):
                     cleaned_line = os.path.join(directory, cleaned_line)

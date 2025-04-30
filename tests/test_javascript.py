@@ -181,6 +181,12 @@ def test_extract_imports_exports(js_file):
     assert any("export { fetchData" in exp for exp in result["exports"])
     assert any("export default" in exp for exp in result["exports"])
 
+def test_extract_imports_exports_empty():
+    """Test import/export extraction with empty content."""
+    result = extract_imports_exports("")
+    assert len(result["imports"]) == 0
+    assert len(result["exports"]) == 0
+
 def test_extract_functions(js_file):
     """Test extraction of function declarations."""
     with open(js_file, 'r') as f:
@@ -192,6 +198,24 @@ def test_extract_functions(js_file):
     function_names = [f["name"] for f in functions]
     assert "fetchData" in function_names
     assert "processData" in function_names
+
+def test_extract_functions_complex_cases():
+    """Test function extraction with complex patterns."""
+    content = """
+    // Should match
+    export default async function complexFunc() {}
+    const asyncArrow = async () => {}
+    
+    // Shouldn't match
+    const notAFunction = 42;
+    // function commented() {}
+    """
+    
+    functions = extract_functions(content)
+    assert len(functions) == 2
+    names = [f["name"] for f in functions]
+    assert "complexFunc" in names
+    assert "asyncArrow" in names
 
 def test_extract_classes(js_file):
     """Test extraction of class declarations."""
@@ -211,6 +235,23 @@ def test_extract_classes(js_file):
             assert cls["is_react_component"] is True
             assert any(m["name"] == "render" for m in cls["methods"])
 
+def test_extract_classes_nested():
+    """Test extraction of nested class declarations."""
+    content = """
+    class Outer {
+        someMethod() {
+            return class Inner {
+                innerMethod() {}
+            }
+        }
+    }
+    """
+    
+    classes = extract_classes(content)
+    assert len(classes) == 1  # Only top-level classes are extracted
+    assert classes[0]["name"] == "Outer"
+    assert any(m["name"] == "someMethod" for m in classes[0]["methods"])
+
 def test_extract_react_components(js_file):
     """Test extraction of React functional components."""
     with open(js_file, 'r') as f:
@@ -221,6 +262,28 @@ def test_extract_react_components(js_file):
     assert len(components) >= 1
     component_names = [c["name"] for c in components]
     assert "DataList" in component_names
+
+def test_extract_react_components_edge_cases():
+    """Test React component extraction with edge cases."""
+    content = """
+    // Arrow function without JSX - should not match
+    const notAComponent = () => 42;
+    
+    // Arrow function with JSX - should match
+    const SimpleComponent = () => <div>Hello</div>;
+    
+    // Function declaration with JSX - should match
+    function ComplexComponent(props) {
+        return <div>{props.text}</div>;
+    }
+    """
+    
+    components = extract_react_functional_components(content)
+    assert len(components) == 2
+    names = [c["name"] for c in components]
+    assert "SimpleComponent" in names
+    assert "ComplexComponent" in names
+    assert "notAComponent" not in names
 
 def test_extract_typescript_interfaces(ts_file):
     """Test extraction of TypeScript interfaces."""
@@ -233,6 +296,27 @@ def test_extract_typescript_interfaces(ts_file):
     interface_names = [i["name"] for i in interfaces]
     assert "Item" in interface_names
     assert "DataProps" in interface_names
+
+def test_extract_typescript_interfaces_edge_cases():
+    """Test TypeScript interface extraction with edge cases."""
+    content = """
+    // Regular interface
+    interface Simple {}
+    
+    // Exported interface with extends
+    export interface Complex extends Base {
+        prop: string;
+    }
+    
+    // Not an interface
+    const interfaceObj = {};
+    """
+    
+    interfaces = extract_typescript_interfaces(content)
+    assert len(interfaces) == 2
+    names = [i["name"] for i in interfaces]
+    assert "Simple" in names
+    assert "Complex" in names
 
 def test_process_js_file(js_file, ts_file):
     """Test the full JS/TS file processing."""
@@ -248,3 +332,13 @@ def test_process_js_file(js_file, ts_file):
     assert "TypeScript" in ts_result
     assert "interface Item" in ts_result
     assert "fetchData" in ts_result
+
+def test_get_js_signatures_nonexistent_file():
+    """Test error handling for non-existent files."""
+    with pytest.raises(FileNotFoundError):
+        get_js_signatures("nonexistent.js")
+
+def test_process_js_file_error_handling():
+    """Test error handling in JS file processing."""
+    result = process_js_file("nonexistent.js")
+    assert "Error processing JavaScript/TypeScript file" in result
