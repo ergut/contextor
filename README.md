@@ -15,8 +15,6 @@ contextor
 
 Interactive file selection right in your terminal:
 
-![Interactive File Picker](https://your-image-url-here.png)
-
 ```text
 my_project/
 ├── src/
