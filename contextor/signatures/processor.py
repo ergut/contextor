@@ -109,10 +109,9 @@ def get_signature_files(directory: str,
             if is_binary_file(file_path):
                 continue
 
-            # Skip if not git-tracked (using relative path for comparison)
+            # Skip if not git-tracked (using absolute path for comparison)
             if git_only and is_git_repo(directory):
-                rel_path = os.path.relpath(file_path, directory)
-                if rel_path not in git_tracked:
+                if abs_path not in git_tracked:
                     continue
                 
             # Only include supported file types
