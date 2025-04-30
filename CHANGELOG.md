@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.1] - 2025-05-01
+
+### Fixed
+
+- Fixed JavaScript class parsing to properly detect React components and methods
+- Fixed signature files comparison against git-tracked files
+- Fixed test suite issues and improved CLI testability
+
+### Changed
+
+- Made clipboard copy the default behavior for easier AI assistant usage
+- Improved success messages and instruction formatting for better user feedback
+
+### Added
+
+- Added more detailed usage tips with specific command examples
+- Updated README to indicate support for JavaScript and SQL signatures
+
 ## [1.4.0] - 2025-04-29
 
 ### Added

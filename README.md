@@ -188,6 +188,6 @@ Salih Ergüt
 
 ## Version 📋
 
-Current version: 1.3.0
+Current version: 1.4.1
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
