@@ -150,7 +150,7 @@ def write_scope_file(scope_file_path, file_paths, directory):
                 for rel_path in sorted(file_groups[group]):
                     f.write(f"{rel_path}\n")
                     
-        print(f"Scope file updated: {scope_file_path}")
+        print(f"✓ Scope file updated: {scope_file_path}")
         return True
     except Exception as e:
         print(f"Error writing scope file: {str(e)}")

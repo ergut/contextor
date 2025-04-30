@@ -18,7 +18,7 @@ def copy_to_clipboard(file_path, max_mb=2):
     try:
         with open(file_path, 'r', encoding='utf-8') as fp:
             pyperclip.copy(fp.read())
-        print('✅  Project scope copied to clipboard.')
+        print('✓ Project scope copied to clipboard.')
         return True
     except pyperclip.PyperclipException as err:
         # Typical on fresh Linux boxes without xclip/xsel

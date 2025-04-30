@@ -198,7 +198,7 @@ def run_cli():
         files_to_merge = args.files
     elif args.use_scope and scope_file_exists:
         # Non-interactive mode with scope file
-        print(f"\nUsing files from scope file: {scope_file}")
+        print(f"\n✓ Using files from scope file: {scope_file}")
         files_to_merge = read_scope_file(scope_file, directory)
         if not files_to_merge:
             print("Warning: No valid files found in scope file.")
@@ -213,13 +213,14 @@ def run_cli():
         preselected_files = []
         if scope_file_exists:
             preselected_files = read_scope_file(scope_file, directory)
-            print(f"\nLoaded {len(preselected_files)} files from scope file for pre-selection.")
+            print(f"\n✓ Loaded {len(preselected_files)} files from scope file for pre-selection.")
         else:
             # No scope file - pre-select smart files instead
             all_files = get_all_files(directory, spec, smart_select=False)
             preselected_files = [f for f in all_files if is_important_file(f)]
-            print(f"\nPreselected {len(preselected_files)} important files.")
+            print(f"\n✓ Preselected {len(preselected_files)} important files.")
         
+        print("✓ Scanning project files...")
         # Run interactive picker with preselection
         files_to_merge = run_interactive_picker(directory, spec, preselected_files)
         

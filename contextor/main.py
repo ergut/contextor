@@ -28,8 +28,8 @@ def print_usage_tips():
 📋 How to use your context file with AI assistants:
 -----------------------------------------------
 1. Upload or paste your context file to the AI
-2. Include this prompt to get better responses:
 
+2. Include this prompt to get better responses:
    "This context file contains instructions for how you should use it.
     Please read and follow these instructions during our conversation.
     When answering questions, proactively check if you need additional
@@ -243,8 +243,8 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 outfile.write(signatures_content)
 
         if total_tokens:
-            print(f"\nEstimated token count: {total_tokens:,}")
-        print(f"Successfully created context file: {output_file}")
+            print(f"\n✓ Estimated token count: {total_tokens:,}")
+        print(f"✅ Successfully created context file: {output_file}")
 
         # Always copy to clipboard by default
         copy_to_clipboard(output_file)
