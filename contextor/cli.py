@@ -11,6 +11,7 @@ import pathspec
 import sys
 import tomli
 from pathlib import Path
+from contextor import __version__
 
 from contextor.main import (
     parse_patterns_file,
@@ -26,12 +27,7 @@ from contextor.selection import (
 
 def get_version():
     """Get version from pyproject.toml."""
-    try:
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
-        with open(pyproject_path, "rb") as f:
-            return tomli.load(f)["project"]["version"]
-    except (FileNotFoundError, KeyError, tomli.TOMLDecodeError):
-        return "1.4.1"  # Fallback to current version
+    return __version__
 
 def parse_args(args=None):
     """Parse command line arguments"""
