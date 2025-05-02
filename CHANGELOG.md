@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.2] - 2025-05-02
+
+### Changed
+
+- Updated release version
+
+### Added
+- Added --version flag to display package version
+
+### Fixed
+- Improved SQL parser to handle template variables in identifiers
+
 ## [1.4.1] - 2025-05-01
 
 ### Fixed
