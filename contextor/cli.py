@@ -9,6 +9,8 @@ import argparse
 import os
 import pathspec
 import sys
+import tomli
+from pathlib import Path
 
 from contextor.main import (
     parse_patterns_file,
@@ -22,9 +24,19 @@ from contextor.selection import (
     is_important_file,
 )
 
+def get_version():
+    """Get version from pyproject.toml."""
+    try:
+        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        with open(pyproject_path, "rb") as f:
+            return tomli.load(f)["project"]["version"]
+    except (FileNotFoundError, KeyError, tomli.TOMLDecodeError):
+        return "1.4.1"  # Fallback to current version
+
 def parse_args(args=None):
     """Parse command line arguments"""
     # Use args if provided, otherwise use sys.argv[1:]
+
     if args is None:
         args = sys.argv[1:]
 
@@ -83,6 +95,12 @@ Notes:
   - .gitignore patterns are respected by default
   
 """)
+
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s {get_version()}'
+    )
 
     # File selection options
     file_group = parser.add_argument_group('file selection arguments')

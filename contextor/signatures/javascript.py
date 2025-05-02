@@ -304,7 +304,7 @@ def process_js_file(file_path: str) -> str:
     except Exception as e:
         return f"Error processing JavaScript/TypeScript file: {str(e)}"
 
-def get_js_signatures(file_path: str) -> Dict[str, Any]]:
+def get_js_signatures(file_path: str) -> Dict[str, Any]:
     """Extract JS/TS file structure including imports, classes, and functions."""
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
