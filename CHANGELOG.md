@@ -1,5 +1,11 @@
 # Changelog
 
+### [1.4.4] - 2025-05-03
+
+### Changed
+
+- Requires Python 3.9+
+
 ### [1.4.3] - 2025-05-03
 
 ### Fixed

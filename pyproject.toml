@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "contextor"
-version = "1.4.3"
+version = "1.4.4"
 description = "Create context files from your codebase for AI conversations"
 readme = "README.md"
 authors = [
     {name = "Salih Ergüt", email = "salih.ergut@gmail.com"}
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "pathspec>=0.12.1",
     "pyperclip>=1.8.2",
