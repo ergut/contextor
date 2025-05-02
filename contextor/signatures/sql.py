@@ -8,39 +8,51 @@ from SQL files, providing a high-level overview of database schema.
 import re
 from typing import Dict, List, Any
 
-# Regex patterns for SQL objects
+# Patterns that handle both backtick and non-backtick quoted identifiers
 TABLE_PATTERN = re.compile(
-    r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:`|\[|")?(\w+)(?:`|\]|")?',
-    re.IGNORECASE
+    r'CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:`([^`]+)`|(\w+))',
+    re.IGNORECASE | re.MULTILINE
 )
 
 VIEW_PATTERN = re.compile(
-    r'CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:`|\[|")?(\w+)(?:`|\]|")?',
-    re.IGNORECASE
+    r'CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:`([^`]+)`|(\w+))',
+    re.IGNORECASE | re.MULTILINE
 )
 
 def get_sql_signatures(file_path: str) -> Dict[str, Any]:
     """Extract SQL schema objects including tables and views."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            content = f.read().strip()
             
+        print(f"SQL Content: {repr(content)}")
+        print(f"Table Pattern: {TABLE_PATTERN.pattern}")
+        print(f"View Pattern: {VIEW_PATTERN.pattern}")
+            
+        # Initialize signatures dict
         signatures = {
             "tables": [],
             "views": []
         }
         
-        # Extract table names
-        table_matches = TABLE_PATTERN.finditer(content)
-        signatures["tables"] = [match.group(1) for match in table_matches]
+        # Extract tables (handle both backtick and non-backtick groups)
+        for match in TABLE_PATTERN.finditer(content):
+            table_name = match.group(1) or match.group(2)
+            if table_name:
+                signatures["tables"].append(table_name)
+                print(f"Found table: {table_name}")
         
-        # Extract view names
-        view_matches = VIEW_PATTERN.finditer(content)
-        signatures["views"] = [match.group(1) for match in view_matches]
+        # Extract views (handle both backtick and non-backtick groups)
+        for match in VIEW_PATTERN.finditer(content):
+            view_name = match.group(1) or match.group(2)
+            if view_name:
+                signatures["views"].append(view_name)
+                print(f"Found view: {view_name}")
         
         return signatures
         
     except Exception as e:
+        print(f"Error: {str(e)}")
         return {"error": str(e)}
 
 def format_sql_signatures(signatures: Dict[str, Any]) -> str:

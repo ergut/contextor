@@ -41,6 +41,13 @@ CREATE TABLE orders (
     yield temp_file
     os.unlink(temp_file)
 
+def create_test_file(content):
+    """Helper to create a test file with given content."""
+    fd, path = tempfile.mkstemp()
+    with os.fdopen(fd, 'w') as tmp:
+        tmp.write(content)
+    return path
+
 def test_get_sql_signatures(sql_file):
     """Test extraction of SQL tables and views."""
     signatures = get_sql_signatures(sql_file)
@@ -82,3 +89,28 @@ def test_process_sql_file_error_handling():
     result = process_sql_file("nonexistent.sql")
     assert "Error:" in result
     assert "No such file or directory" in result
+
+def test_view_with_template_variables():
+    """Test that views with template variables are properly extracted."""
+    sql_content = '''
+    CREATE OR REPLACE VIEW `${PROJECT_ID}.${DATASET}.view_name`
+    AS SELECT * FROM table;
+    '''
+    file_path = create_test_file(sql_content)
+    try:
+        signatures = get_sql_signatures(file_path)
+        assert len(signatures["views"]) == 1
+        assert "${PROJECT_ID}.${DATASET}.view_name" in signatures["views"]
+    finally:
+        os.remove(file_path)
+
+def test_table_with_template_variables():
+    """Test that tables with template variables are properly extracted."""
+    sql_content = 'CREATE OR REPLACE TABLE `${PROJECT_ID}.${DATASET}.table_name` PARTITION BY date CLUSTER BY id AS SELECT * FROM other_table;'
+    file_path = create_test_file(sql_content)
+    try:
+        signatures = get_sql_signatures(file_path)
+        assert len(signatures["tables"]) == 1
+        assert "${PROJECT_ID}.${DATASET}.table_name" in signatures["tables"]
+    finally:
+        os.remove(file_path)
