@@ -1,5 +1,10 @@
 # Changelog
 
+### [1.4.3] - 2025-05-03
+
+### Fixed
+- Fixed `--version` command showing incorrect version in installed package
+
 ## [1.4.2] - 2025-05-02
 
 ### Changed
