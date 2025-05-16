@@ -82,6 +82,8 @@ Examples:
   # Set maximum heading depth for Markdown TOC extraction
   %(prog)s --md-heading-depth 2
 
+  # Disable tree structure in the output (useful for supplementary files)
+  %(prog)s --no-tree --files additional_file.py  
 
 Notes:
   - Interactive file selection is the default mode
@@ -163,7 +165,11 @@ Notes:
         default='project_context.md',
         help='Name of the output file (default: project_context.md)'
     )
-
+    output_group.add_argument(
+        '--no-tree',
+        action='store_true',
+        help='Disable tree structure in the output'
+    )
 
     # Directory and exclusion options
     directory_group = parser.add_argument_group('directory and exclusion arguments')
@@ -258,6 +264,7 @@ def run_cli():
         md_heading_depth=args.md_heading_depth,
         git_only_signatures=not args.all_signatures,
         no_git_markers=args.no_git_markers,
+        no_tree=args.no_tree, 
     )
 
 if __name__ == "__main__":

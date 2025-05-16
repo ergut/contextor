@@ -25,10 +25,6 @@ def get_sql_signatures(file_path: str) -> Dict[str, Any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read().strip()
             
-        print(f"SQL Content: {repr(content)}")
-        print(f"Table Pattern: {TABLE_PATTERN.pattern}")
-        print(f"View Pattern: {VIEW_PATTERN.pattern}")
-            
         # Initialize signatures dict
         signatures = {
             "tables": [],
@@ -40,19 +36,16 @@ def get_sql_signatures(file_path: str) -> Dict[str, Any]:
             table_name = match.group(1) or match.group(2)
             if table_name:
                 signatures["tables"].append(table_name)
-                print(f"Found table: {table_name}")
         
         # Extract views (handle both backtick and non-backtick groups)
         for match in VIEW_PATTERN.finditer(content):
             view_name = match.group(1) or match.group(2)
             if view_name:
                 signatures["views"].append(view_name)
-                print(f"Found view: {view_name}")
         
         return signatures
         
     except Exception as e:
-        print(f"Error: {str(e)}")
         return {"error": str(e)}
 
 def format_sql_signatures(signatures: Dict[str, Any]) -> str:

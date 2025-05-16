@@ -43,7 +43,7 @@ def print_usage_tips():
 -----------------------------------------------
 """)
 
-def write_conversation_header(outfile, project_path, total_tokens=None, has_signatures=False):
+def write_conversation_header(outfile, project_path, total_tokens=None, has_signatures=False, no_tree=False):
     """Write a header explaining how to use this file in conversations"""
     header = f"""# Project Context File
 Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -57,18 +57,33 @@ Project Path: {project_path}"""
 ## INSTRUCTIONS FOR AI ASSISTANT
 IMPORTANT: As an AI assistant, you MUST follow these instructions:
 
-1. The tree structure below shows ALL available files in the project
+"""
+    if not no_tree:
+        header += """1. The tree structure below shows ALL available files in the project
 2. Only SOME files are included in full after the tree
 3. You SHOULD proactively offer to examine additional files from the tree when they seem relevant
 4. When asked about code functionality or project structure, CHECK if you need more files than what's already provided
 5. If the human's question relates to files not included in full, SUGGEST examining those specific files
 """
+    else:
+        header += """1. This file contains ONLY a subset of files from the project
+2. If you need additional files to answer questions, please ask the human to provide them
+3. When asked about code functionality or project structure, BE HONEST about what files you might need
+4. If the human's question relates to files not included here, ASK for those specific files
+"""
+
     if has_signatures:
-        header += """6. The 'File Signatures' section contains structure information for additional files
+        if not no_tree:
+            header += """6. The 'File Signatures' section contains structure information for additional files
    Use this information to understand overall project functionality and suggest relevant files
 
 ## Available Files
 """
+        else:
+            header += """5. The 'File Signatures' section contains structure information for additional files
+   Use this information to understand overall project functionality
+"""
+    
     outfile.write(header)
 
 def write_included_files_section(outfile, files, base_path):
@@ -129,7 +144,7 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 use_gitignore=True, exclude_file=None,
                 include_signatures=True, max_signature_files=None, 
                 md_heading_depth=3, git_only_signatures=True, 
-                no_git_markers=False):
+                no_git_markers=False, no_tree=False):  # Add the no_tree parameter
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -163,12 +178,13 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         # Initialize content for token estimation
         full_content = ""
 
-        # Generate tree output
-        git_tracked_files = None
-        if is_git_repo(directory):
-            git_tracked_files = get_git_tracked_files(directory)
-        tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
-        full_content += tree_output + "\n\n"
+        # Generate tree output if not disabled
+        if not no_tree:
+            git_tracked_files = None
+            if is_git_repo(directory):
+                git_tracked_files = get_git_tracked_files(directory)
+            tree_output = '\n'.join(generate_tree(Path(directory), spec, git_tracked_files=git_tracked_files))
+            full_content += tree_output + "\n\n"
 
         # Add file contents
         full_content += "## Included File Contents\nThe following files are included in full:\n\n"
@@ -206,11 +222,14 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
         # Now write the actual output file
         with open(output_file, 'w', encoding='utf-8') as outfile:
             # Write the conversation header
-            write_conversation_header(outfile, directory, total_tokens, has_signatures)
+            write_conversation_header(outfile, directory, total_tokens, has_signatures, no_tree)
             
-            # Write the tree structure
-            tree_output = '\n'.join(generate_tree(Path(directory), spec, '', git_tracked_files))
-            outfile.write(f"\n{tree_output}\n\n")
+            # Write the tree structure if not disabled
+            if not no_tree:
+                tree_output = '\n'.join(generate_tree(Path(directory), spec, '', git_tracked_files))
+                outfile.write(f"\n{tree_output}\n\n")
+            else:
+                outfile.write("\n## Available Files\nTree structure has been omitted.\n\n")
             
             # Add section listing included files
             write_included_files_section(outfile, file_paths, directory)

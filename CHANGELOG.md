@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.4.5] - 2025-05-03
+
+### Changed
+
+- Removed SQL debugging prints
+- Added no-tree option
+
 ### [1.4.4] - 2025-05-03
 
 ### Changed

@@ -115,6 +115,8 @@ contextor --files main.py config.yaml --copy
 | `--output` | Output filename (default: project_context.md) |
 | `--no-gitignore` | Disable .gitignore patterns |
 | `--exclude-file` | Additional exclude patterns file |
+| `--no-tree`| Omit tree structure from output |
+| `--no-signatures` | Disable file signature extraction |
 
 ## Examples 📚
 
