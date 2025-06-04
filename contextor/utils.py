@@ -1,6 +1,7 @@
 import os
 import subprocess
 import re
+from pathlib import Path
 
 DEFAULT_EXCLUSIONS = {
     '.git/',                  # Git metadata
@@ -43,9 +44,16 @@ def should_exclude(path, base_path, spec):
         # Check against hardcoded exclusions first
         for pattern in DEFAULT_EXCLUSIONS:
             if pattern.endswith('/'):
-                # Directory match
+                # Directory match - check if path is inside this directory
                 if rel_path_str == pattern or rel_path_str.startswith(pattern):
                     return True
+                # Also check if any parent directory matches
+                if '/' in rel_path_str:
+                    parts = rel_path_str.split('/')
+                    for i in range(len(parts)):
+                        parent_path = '/'.join(parts[:i+1]) + '/'
+                        if parent_path == pattern:
+                            return True
             elif '*' in pattern:
                 # Simple wildcard matching
                 pattern_parts = pattern.split('*')
@@ -113,3 +121,77 @@ def estimate_tokens(text):
     words = re.findall(r'\w+|[^\w\s]', text)
     # Use 0.75 as a conservative ratio (most GPT models average 0.75 tokens per word)
     return int(len(words) / 0.75)
+
+
+def is_signature_file(file_path):
+    """Check if file type is supported for signature extraction."""
+    return (file_path.endswith('.py') or 
+            file_path.lower().endswith(('.md', '.markdown')) or
+            file_path.lower().endswith(('.js', '.jsx', '.ts', '.tsx')) or
+            file_path.lower().endswith('.sql'))
+
+
+def scan_project_files(directory, spec=None, git_only_signatures=True):
+    """Single pass through project to categorize all files.
+    
+    Args:
+        directory: Project directory path
+        spec: gitignore spec for exclusions
+        git_only_signatures: Whether to only include Git-tracked files for signatures
+        
+    Returns:
+        dict with 'all_files', 'signature_candidates', 'git_tracked'
+    """
+    all_files = []
+    signature_candidates = []
+    
+    # Get git tracking info once if needed
+    git_tracked = set()
+    if is_git_repo(directory):
+        git_tracked = get_git_tracked_files(directory)
+    
+    # Single os.walk with directory filtering
+    for root, dirnames, filenames in os.walk(directory):
+        # Filter directories in-place to prevent walking into excluded dirs
+        # Check each directory and remove excluded ones
+        filtered_dirs = []
+        for d in dirnames:
+            dir_path = Path(os.path.join(root, d))
+            if not should_exclude(dir_path, directory, spec):
+                filtered_dirs.append(d)
+        dirnames[:] = filtered_dirs
+        
+        for filename in filenames:
+            file_path = os.path.join(root, filename)
+            abs_path = os.path.abspath(file_path)
+            
+            # Skip if excluded by gitignore patterns
+            if should_exclude(Path(file_path), directory, spec):
+                continue
+
+            # Skip binary files 
+            if is_binary_file(file_path):
+                continue
+                
+            # Skip files larger than 10MB
+            try:
+                if Path(file_path).stat().st_size > 10 * 1024 * 1024:
+                    print(f"Warning: Skipping large file ({file_path}) - size exceeds 10MB")
+                    continue
+            except OSError:
+                continue
+            
+            # Add to all_files (for interactive picker)
+            all_files.append(file_path)
+            
+            # Check if it's a signature candidate
+            if is_signature_file(file_path):
+                # If git_only_signatures, check git tracking
+                if not git_only_signatures or abs_path in git_tracked:
+                    signature_candidates.append(file_path)
+    
+    return {
+        'all_files': sorted(all_files),
+        'signature_candidates': sorted(signature_candidates),
+        'git_tracked': git_tracked
+    }

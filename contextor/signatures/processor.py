@@ -69,6 +69,9 @@ def get_signature_files(directory: str,
                         ) -> List[str]:
     """Get list of files for signature extraction.
     
+    DEPRECATED: Use filter_signature_candidates() for better performance.
+    This function performs duplicate os.walk().
+    
     Args:
         directory: Project directory 
         included_files: List of files already included in full
@@ -92,7 +95,12 @@ def get_signature_files(directory: str,
     # Priority lists to sort files by importance
     important_extensions = ['.py', '.js', '.ts', '.jsx', '.tsx', '.md', '.sql']
     
-    for root, _, filenames in os.walk(directory):
+    # Use os.walk with directory filtering
+    for root, dirnames, filenames in os.walk(directory):
+        # Filter directories in-place to prevent walking into excluded dirs
+        dirnames[:] = [d for d in dirnames 
+                      if not should_exclude(Path(os.path.join(root, d)), directory, spec)]
+        
         for filename in filenames:
             file_path = os.path.join(root, filename)
             abs_path = os.path.abspath(file_path)
@@ -146,26 +154,86 @@ def get_signature_files(directory: str,
     
     return signature_files
 
+def filter_signature_candidates(signature_candidates: List[str],
+                               included_files: List[str],
+                               max_files: Optional[int] = None,
+                               git_only: bool = True) -> List[str]:
+    """Filter signature candidates, removing already included files and applying limits.
+    
+    Args:
+        signature_candidates: Pre-scanned list of signature candidate files
+        included_files: List of files already included in full
+        max_files: Maximum number of files to include (None for unlimited)
+        git_only: Whether limiting was applied during scanning (for messaging)
+        
+    Returns:
+        Filtered list of file paths for signature extraction
+    """
+    # Convert included_files to a set for O(1) lookups
+    included_set = set(os.path.abspath(f) for f in included_files)
+    
+    # Filter out already included files
+    filtered_files = []
+    for file_path in signature_candidates:
+        abs_path = os.path.abspath(file_path)
+        if abs_path not in included_set:
+            filtered_files.append(file_path)
+    
+    # Sort files by priority (important extensions first)
+    important_extensions = ['.py', '.js', '.ts', '.jsx', '.tsx', '.md', '.sql']
+    
+    def get_priority(file_path):
+        _, ext = os.path.splitext(file_path.lower())
+        try:
+            return important_extensions.index(ext)
+        except ValueError:
+            return len(important_extensions)
+    
+    filtered_files.sort(key=get_priority)
+    
+    # Apply limit if specified and git_only is True (don't limit when --all-signatures is used)
+    if max_files is not None and max_files >= 0 and git_only:
+        total_available = len(filtered_files)
+        filtered_files = filtered_files[:max_files]
+        if total_available > max_files:
+            print(f"Note: Found {total_available} files for signature extraction, but only including {max_files} due to max-signature-files limit.")
+            print(f"      Use --max-signature-files option to include more signatures if needed.")
+        else:
+            print(f"Found {len(filtered_files)} files for signature extraction.")
+    else:
+        print(f"Found {len(filtered_files)} files for signature extraction.")
+    
+    return filtered_files
+
 def generate_signatures_section(directory: str,
                               included_files: List[str],
                               spec=None,
                               max_files: Optional[int] = None,
                               md_depth: int = 3,
-                              git_only: bool = True) -> tuple[str, bool]:
+                              git_only: bool = True,
+                              signature_candidates: Optional[List[str]] = None) -> tuple[str, bool]:
     """Generate the File Signatures section content.
     
     Args:
         directory: Project directory
         included_files: List of files already included in full
-        spec: gitignore spec object
+        spec: gitignore spec object (used only if signature_candidates is None)
         max_files: Maximum number of signature files to include 
         md_depth: Maximum depth for Markdown headings
         git_only: Whether to only include Git-tracked files
+        signature_candidates: Pre-scanned signature candidates (preferred)
         
     Returns:
         Tuple of (signature content string, whether signatures were generated)
     """
-    signature_files = get_signature_files(directory, included_files, spec, max_files, git_only)
+    if signature_candidates is not None:
+        # Use pre-scanned candidates (fast path)
+        signature_files = filter_signature_candidates(
+            signature_candidates, included_files, max_files, git_only
+        )
+    else:
+        # Fall back to old method (slow path with os.walk)
+        signature_files = get_signature_files(directory, included_files, spec, max_files, git_only)
     
     if not signature_files:
         return "", False

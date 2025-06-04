@@ -43,7 +43,11 @@ def is_important_file(file_path):
 
 
 def get_all_files(directory, spec, smart_select=False):
-    """Get list of all files in directory that aren't excluded by spec"""
+    """Get list of all files in directory that aren't excluded by spec
+    
+    DEPRECATED: Use scan_project_files() from utils.py instead for better performance.
+    This function is kept for backward compatibility but performs duplicate os.walk().
+    """
     files = []
     for root, _, filenames in os.walk(directory):
         for filename in filenames:
@@ -162,13 +166,25 @@ def write_scope_file(scope_file_path, file_paths, directory):
 
 
 def run_interactive_picker(directory, spec, preselected_files=None):
-    """Allow user to interactively select files to include in the context"""
+    """Allow user to interactively select files to include in the context
+    
+    DEPRECATED: Use run_interactive_picker_with_files() for better performance.
+    This function performs duplicate os.walk().
+    """
     import questionary
     from questionary import Separator
     
     print("\nScanning project files...")
 
     all_files = get_all_files(directory, spec, smart_select=False)
+    
+    return run_interactive_picker_with_files(all_files, directory, preselected_files)
+
+
+def run_interactive_picker_with_files(all_files, directory, preselected_files=None):
+    """Allow user to interactively select files from a pre-scanned list"""
+    import questionary
+    from questionary import Separator
     
     # Create a list of important files for highlighting
     important_files = [f for f in all_files if is_important_file(f)]

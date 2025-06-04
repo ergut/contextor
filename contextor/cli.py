@@ -18,12 +18,12 @@ from contextor.main import (
     merge_files,
 )
 from contextor.selection import (
-    run_interactive_picker,
+    run_interactive_picker_with_files,
     read_scope_file,
     write_scope_file,
-    get_all_files,
     is_important_file,
 )
+from contextor.utils import scan_project_files
 
 def get_version():
     """Get version from pyproject.toml."""
@@ -217,12 +217,14 @@ def run_cli():
 
     # Handle file selection based on options
     files_to_merge = None
+    project_files = None  # Will hold our scanned files
 
     if args.files:
-        # Explicitly specified files
+        # Explicitly specified files - no need to scan project
         files_to_merge = args.files
+        print(f"\n✓ Using {len(files_to_merge)} explicitly specified files.")
     elif args.use_scope and scope_file_exists:
-        # Non-interactive mode with scope file
+        # Non-interactive mode with scope file - no need to scan project
         print(f"\n✓ Using files from scope file: {scope_file}")
         files_to_merge = read_scope_file(scope_file, directory)
         if not files_to_merge:
@@ -233,25 +235,49 @@ def run_cli():
         print("Run without --use-scope to create an interactive selection.")
         return
     else:
-        # Interactive mode - either use scope file contents for pre-selection
-        # or fall back to smart selection if no scope file
+        # Interactive mode - need to scan project once
+        print("✓ Scanning project files...")
+        project_files = scan_project_files(
+            directory, 
+            spec, 
+            git_only_signatures=not args.all_signatures
+        )
+        
+        # Determine preselected files
         preselected_files = []
         if scope_file_exists:
             preselected_files = read_scope_file(scope_file, directory)
-            print(f"\n✓ Loaded {len(preselected_files)} files from scope file for pre-selection.")
+            print(f"✓ Loaded {len(preselected_files)} files from scope file for pre-selection.")
         else:
             # No scope file - pre-select smart files instead
-            all_files = get_all_files(directory, spec, smart_select=False)
-            preselected_files = [f for f in all_files if is_important_file(f)]
-            print(f"\n✓ Preselected {len(preselected_files)} important files.")
+            preselected_files = [f for f in project_files['all_files'] if is_important_file(f)]
+            print(f"✓ Preselected {len(preselected_files)} important files.")
         
-        print("✓ Scanning project files...")
-        # Run interactive picker with preselection
-        files_to_merge = run_interactive_picker(directory, spec, preselected_files)
+        # Run interactive picker with pre-scanned files
+        files_to_merge = run_interactive_picker_with_files(
+            project_files['all_files'], 
+            directory, 
+            preselected_files
+        )
         
         # Update scope file unless told not to
         if not args.no_update_scope:
             write_scope_file(scope_file, files_to_merge, directory)
+
+    # If we haven't scanned yet and need signatures, scan now
+    # This happens when using --files or --use-scope
+    if project_files is None and not args.no_signatures:
+        print("✓ Scanning for signature extraction...")
+        project_files = scan_project_files(
+            directory, 
+            spec, 
+            git_only_signatures=not args.all_signatures
+        )
+
+    # Extract signature candidates if available
+    signature_candidates = None
+    if project_files is not None:
+        signature_candidates = project_files['signature_candidates']
 
     merge_files(
         files_to_merge, 
@@ -264,7 +290,8 @@ def run_cli():
         md_heading_depth=args.md_heading_depth,
         git_only_signatures=not args.all_signatures,
         no_git_markers=args.no_git_markers,
-        no_tree=args.no_tree, 
+        no_tree=args.no_tree,
+        signature_candidates=signature_candidates,  # Pass the pre-scanned candidates
     )
 
 if __name__ == "__main__":

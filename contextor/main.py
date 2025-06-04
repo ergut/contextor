@@ -144,7 +144,8 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 use_gitignore=True, exclude_file=None,
                 include_signatures=True, max_signature_files=None, 
                 md_heading_depth=3, git_only_signatures=True, 
-                no_git_markers=False, no_tree=False):  # Add the no_tree parameter
+                no_git_markers=False, no_tree=False,
+                signature_candidates=None):  # Add signature_candidates parameter
     """Merge files with conversation-friendly structure"""
     try:
         directory = directory or os.getcwd()
@@ -213,7 +214,8 @@ def merge_files(file_paths, output_file='merged_file.txt', directory=None,
                 spec,
                 max_signature_files,
                 md_heading_depth,
-                git_only_signatures
+                git_only_signatures,
+                signature_candidates=signature_candidates  # Pass the candidates
             )
             full_content += signatures_content
 
