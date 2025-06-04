@@ -189,10 +189,28 @@ def run_interactive_picker_with_files(all_files, directory, preselected_files=No
     # Create a list of important files for highlighting
     important_files = [f for f in all_files if is_important_file(f)]
     
-    # If we have preselected files, use those instead of important_files
-    # for determining what's checked by default
+    # Normalize preselected files to match all_files format
+    checked_files = []
     if preselected_files:
-        checked_files = preselected_files
+        # Convert all_files to a set of normalized absolute paths for faster lookup
+        normalized_all_files = set()
+        abs_to_original = {}  # Map absolute paths back to original paths
+        for f in all_files:
+            abs_path = os.path.abspath(f)
+            normalized_all_files.add(abs_path)
+            abs_to_original[abs_path] = f
+        
+        # Convert preselected files to absolute paths and check if they exist
+        for file_path in preselected_files:
+            if not os.path.isabs(file_path):
+                abs_path = os.path.abspath(os.path.join(directory, file_path))
+            else:
+                abs_path = os.path.abspath(file_path)
+            
+            # Check if this absolute path matches any in our normalized set
+            if abs_path in normalized_all_files:
+                original_path = abs_to_original[abs_path]
+                checked_files.append(original_path)
     else:
         checked_files = important_files
     
@@ -218,9 +236,6 @@ def run_interactive_picker_with_files(all_files, directory, preselected_files=No
         for file_path in sorted(file_groups[group]):
             rel_path = os.path.relpath(file_path, directory)
             
-            # Mark files as selected if in preselected_files or important
-            is_checked = file_path in checked_files
-            
             # Add a ✨ indicator for smart-selected files
             file_display = rel_path
             if file_path in important_files and preselected_files:
@@ -229,7 +244,7 @@ def run_interactive_picker_with_files(all_files, directory, preselected_files=No
             choices.append(questionary.Choice(
                 file_display,
                 value=file_path,
-                checked=is_checked
+                checked=file_path in checked_files  # Use normalized checked_files
             ))
     
     try:
