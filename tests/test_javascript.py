@@ -335,9 +335,12 @@ def test_process_js_file(js_file, ts_file):
 
 def test_get_js_signatures_nonexistent_file():
     """Test error handling for non-existent files."""
-    with pytest.raises(FileNotFoundError):
-        get_js_signatures("nonexistent.js")
-
+    result = get_js_signatures('nonexistent_file.js')
+    
+    # Our new implementation returns an error dict instead of raising
+    assert "error" in result
+    assert "Could not read file" in result["error"]
+    
 def test_process_js_file_error_handling():
     """Test error handling in JS file processing."""
     result = process_js_file("nonexistent.js")

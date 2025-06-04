@@ -6,6 +6,7 @@ structures from JavaScript and TypeScript files.
 """
 
 import re
+import signal
 from typing import Dict, List, Any, Optional
 
 try:
@@ -13,6 +14,28 @@ try:
     PARSER_AVAILABLE = True
 except ImportError:
     PARSER_AVAILABLE = False
+
+class TimeoutError(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutError("Regex operation timed out")
+
+def safe_regex_finditer(pattern, content, timeout_seconds=5):
+    """Run regex finditer with timeout protection."""
+    # Set up signal handler for timeout
+    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout_seconds)
+    
+    try:
+        matches = list(pattern.finditer(content))
+        return matches
+    except TimeoutError:
+        print(f"Warning: Regex operation timed out, skipping this extraction")
+        return []
+    finally:
+        signal.alarm(0)  # Cancel the alarm
+        signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
 
 def extract_imports_exports(content: str) -> Dict[str, List[str]]:
     """Extract import and export statements using regex."""
@@ -23,12 +46,12 @@ def extract_imports_exports(content: str) -> Dict[str, List[str]]:
     import_pattern = re.compile(r'^\s*import\s+.*?["\'].*?["\'];?\s*$', re.MULTILINE)
     export_pattern = re.compile(r'^\s*export\s+(?:default\s+)?.*?(?:{.*?}|\w+.*?);?\s*$', re.MULTILINE)
     
-    # Extract imports
-    for match in import_pattern.finditer(content):
+    # Extract imports with timeout protection
+    for match in safe_regex_finditer(import_pattern, content):
         imports.append(match.group().strip())
     
-    # Extract exports
-    for match in export_pattern.finditer(content):
+    # Extract exports with timeout protection
+    for match in safe_regex_finditer(export_pattern, content):
         exports.append(match.group().strip())
         
     return {
@@ -52,7 +75,7 @@ def extract_functions(content: str) -> List[Dict[str, str]]:
     
     for pattern, func_type in patterns:
         regex = re.compile(pattern, re.MULTILINE)
-        for match in regex.finditer(content):
+        for match in safe_regex_finditer(regex, content):
             if func_type != 'method' or not any(m in content[:match.start()] for m in ['class', 'interface']):
                 functions.append({
                     "name": match.group(1),
@@ -84,8 +107,8 @@ def extract_classes(content: str) -> List[Dict[str, Any]]:
         re.MULTILINE
     )
     
-    # Find all top-level class declarations
-    for match in class_pattern.finditer(content):
+    # Find all top-level class declarations with timeout protection
+    for match in safe_regex_finditer(class_pattern, content):
         class_name = match.group(1)
         extends_clause = match.group(2)
         start_pos = match.end()
@@ -96,7 +119,7 @@ def extract_classes(content: str) -> List[Dict[str, Any]]:
         # Find matching closing brace for class
         brace_count = 1
         end_pos = start_pos
-        for i in range(start_pos, len(content)):
+        for i in range(start_pos, min(start_pos + 10000, len(content))):  # Limit search range
             if content[i] == '{':
                 brace_count += 1
             elif content[i] == '}':
@@ -105,12 +128,14 @@ def extract_classes(content: str) -> List[Dict[str, Any]]:
                     end_pos = i
                     break
         
-        # Extract class body
+        # Extract class body (limit size to prevent hangs)
         class_body = content[start_pos:end_pos]
+        if len(class_body) > 50000:  # Skip very large class bodies
+            continue
         
-        # Extract methods from class body
+        # Extract methods from class body with timeout protection
         methods = []
-        for method_match in method_pattern.finditer(class_body):
+        for method_match in safe_regex_finditer(method_pattern, class_body):
             method_name = method_match.group(1)
             method_line = method_match.group().strip()
             
@@ -137,65 +162,13 @@ def extract_classes(content: str) -> List[Dict[str, Any]]:
     
     return classes
 
-def extract_classes_with_parser(content: str) -> List[Dict[str, Any]]:
-    """Extract class declarations using JavaScript parser."""
-    classes = []
-    
-    try:
-        # Parse the content
-        parsed = pyjsparser.parse(content)
-        body = parsed.get('body', [])
-        
-        # Process each top-level node
-        for node in body:
-            # Check for class declarations
-            if node.get('type') == 'ClassDeclaration':
-                class_info = {
-                    'name': node.get('id', {}).get('name', ''),
-                    'methods': [],
-                    'signature': f"class {node.get('id', {}).get('name', '')} {{",
-                    'is_react_component': False
-                }
-                
-                # Check for extends
-                if node.get('superClass'):
-                    super_name = node.get('superClass', {}).get('name', '')
-                    if super_name:
-                        class_info['extends'] = super_name
-                        class_info['signature'] = f"class {class_info['name']} extends {super_name} {{"
-                        # Check if it's a React component
-                        if super_name in ['React.Component', 'Component']:
-                            class_info['is_react_component'] = True
-                
-                # Extract methods from body
-                for body_item in node.get('body', {}).get('body', []):
-                    if body_item.get('type') == 'MethodDefinition':
-                        method_name = body_item.get('key', {}).get('name', '')
-                        method_info = {
-                            'name': method_name,
-                            'signature': f"{method_name}() {{"
-                        }
-                        class_info['methods'].append(method_info)
-                
-                classes.append(class_info)
-                
-            # Also check for exported class declarations
-            elif node.get('type') == 'ExportDefaultDeclaration' or node.get('type') == 'ExportNamedDeclaration':
-                declaration = node.get('declaration', {})
-                if declaration.get('type') == 'ClassDeclaration':
-                    # Process similar to above
-                    # [similar processing code]
-                    pass
-    
-    except Exception as e:
-        print(f"Error parsing with JavaScript parser: {str(e)}")
-        return []
-        
-    return classes
-
 def extract_react_functional_components(content: str) -> List[Dict[str, str]]:
     """Extract React functional components."""
     components = []
+    
+    # Skip if content is too large to prevent hangs
+    if len(content) > 100000:
+        return components
     
     # Patterns for React components
     patterns = [
@@ -210,7 +183,7 @@ def extract_react_functional_components(content: str) -> List[Dict[str, str]]:
     
     for pattern in patterns:
         regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
-        for match in regex.finditer(content):
+        for match in safe_regex_finditer(regex, content):
             components.append({
                 "name": match.group(1),
                 "signature": match.group().strip()
@@ -219,17 +192,22 @@ def extract_react_functional_components(content: str) -> List[Dict[str, str]]:
     return components
 
 def extract_typescript_interfaces(content: str) -> List[Dict[str, str]]:
-    """Extract TypeScript interfaces."""
+    """Extract TypeScript interfaces with better performance."""
     interfaces = []
     
-    # Match interface declarations
+    # Skip if content is too large to prevent hangs
+    if len(content) > 100000:
+        print("Warning: File too large for interface extraction, skipping")
+        return interfaces
+    
+    # Use a simpler, more efficient pattern that's less likely to cause backtracking
     interface_pattern = re.compile(
-        r'^\s*(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+[^{]+)?\s*{'
-        r'(?:[^{}]*|\{[^{}]*\})*}',
-        re.MULTILINE | re.DOTALL
+        r'^\s*(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+[\w\s,<>]+)?\s*\{',
+        re.MULTILINE
     )
     
-    for match in interface_pattern.finditer(content):
+    # Extract interfaces with timeout protection
+    for match in safe_regex_finditer(interface_pattern, content):
         interfaces.append({
             "name": match.group(1),
             "signature": match.group().split('{')[0].strip() + '{'
@@ -306,8 +284,24 @@ def process_js_file(file_path: str) -> str:
 
 def get_js_signatures(file_path: str) -> Dict[str, Any]:
     """Extract JS/TS file structure including imports, classes, and functions."""
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        return {"error": f"Could not read file: {str(e)}"}
+    
+    # Skip processing if file is too large
+    if len(content) > 200000:  # 200KB limit
+        return {
+            "imports": [],
+            "exports": [],
+            "functions": [],
+            "classes": [],
+            "react_components": [],
+            "file_type": "Large File",
+            "has_jsx": False,
+            "note": "File too large for detailed signature extraction"
+        }
     
     # Determine file type and features
     is_typescript = file_path.lower().endswith(('.ts', '.tsx'))
@@ -323,19 +317,24 @@ def get_js_signatures(file_path: str) -> Dict[str, Any]:
         "has_jsx": has_jsx
     }
     
-    # Extract content using regex
-    imports_exports = extract_imports_exports(content)
-    result["imports"] = imports_exports["imports"]
-    result["exports"] = imports_exports["exports"]
-    result["functions"] = extract_functions(content)
-    result["classes"] = extract_classes(content)
+    try:
+        # Extract content using regex with timeout protection
+        imports_exports = extract_imports_exports(content)
+        result["imports"] = imports_exports["imports"]
+        result["exports"] = imports_exports["exports"]
+        result["functions"] = extract_functions(content)
+        result["classes"] = extract_classes(content)
+        
+        # Handle React-specific structures
+        if has_jsx:
+            result["react_components"] = extract_react_functional_components(content)
+        
+        # Handle TypeScript-specific structures
+        if is_typescript:
+            result["interfaces"] = extract_typescript_interfaces(content)
     
-    # Handle React-specific structures
-    if has_jsx:
-        result["react_components"] = extract_react_functional_components(content)
-    
-    # Handle TypeScript-specific structures
-    if is_typescript:
-        result["interfaces"] = extract_typescript_interfaces(content)
+    except Exception as e:
+        print(f"Warning: Error extracting signatures from {file_path}: {str(e)}")
+        result["error"] = str(e)
     
     return result
